@@ -48,7 +48,7 @@ if st.sidebar.button("Show Image") and product_code:
     
     if image_data:
         image = Image.open(BytesIO(image_data))
-        st.sidebar.image(image, caption=f"Product: {product_code} (p{extension})", use_column_width=True)
+        st.sidebar.image(image, caption=f"Product: {product_code} (p{extension})", use_container_width=True)
         
         # Download button for the image
         st.sidebar.download_button(
