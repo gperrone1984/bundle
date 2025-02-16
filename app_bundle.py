@@ -5,6 +5,9 @@ import pandas as pd
 import shutil
 from io import BytesIO
 
+# Streamlit UI
+st.title("PDM Bundle Image Creator")
+
 # Instructions for the input file structure
 st.markdown("""
 ### 📌 Instructions:
@@ -16,6 +19,8 @@ To prepare the input file, follow these steps:
    - **With Codes** 
    - **Without Media**
 """)
+
+st.write("Upload a CSV file with bundle codes to download corresponding images.")
 
 # Function to download an image from a predefined URL
 def download_image(product_code):
@@ -98,10 +103,6 @@ def process_file(uploaded_file):
     
     with open(zip_path, "rb") as zip_file:
         return zip_file.read(), missing_images_data, missing_images_df
-
-# Streamlit UI
-st.title("PDM Bundle Image Creator")
-st.write("Upload a CSV file with bundle codes to download corresponding images.")
 
 # File uploader widget
 uploaded_file = st.file_uploader("Upload CSV File", type=["csv"])
