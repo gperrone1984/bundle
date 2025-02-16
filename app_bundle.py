@@ -7,20 +7,14 @@ from io import BytesIO
 
 # Instructions for the input file structure
 st.markdown("""
-### 📌 Instructions for Uploading the CSV File
-- The file must be in **CSV format** with `;` as the separator.
-- It should contain **two columns** with the following headers:
-  - **sku** → The bundle code (unique identifier for each bundle).
-  - **pzns_in_set** → A comma-separated list of product codes (PZN codes) included in the bundle.
-
-#### Example of a Valid CSV File:
-```
-sku;pzns_in_set
-BUNDLE001;12345678,87654321
-BUNDLE002;11223344,55667788,99887766
-```
-- Each row represents a bundle, and the **pzns_in_set** column should contain product codes separated by commas.
-- Make sure there are **no empty rows** or missing values.
+### 📌 Instructions:
+To prepare the input file, follow these steps:
+1. **Create a Quick Report** containing the list of products.
+2. **Select the following options:**
+   - **File Type:** CSV
+   - **All Attributes** or **Grid Context**, to speed up the download (for **Grid Context** select **ID** and **PZN included in the set**)
+   - **With Codes** 
+   - **Without Media**
 """)
 
 # Function to download an image from a predefined URL
@@ -106,7 +100,7 @@ def process_file(uploaded_file):
         return zip_file.read(), missing_images_data, missing_images_df
 
 # Streamlit UI
-st.title("Bundle Image Downloader")
+st.title("PDM Bundle Image Creator")
 st.write("Upload a CSV file with bundle codes to download corresponding images.")
 
 # File uploader widget
