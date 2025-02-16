@@ -14,7 +14,7 @@ def download_image(product_code):
         url = base_url.format(product_code, suffix)
         response = requests.get(url, stream=True)
         if response.status_code == 200:
-            return response.content  # Restituisce il contenuto dell'immagine
+            return response.content  # Returns image content
     return None
 
 def create_directory(path):
@@ -66,16 +66,21 @@ def process_file(uploaded_file):
     shutil.make_archive(base_folder, 'zip', base_folder)
     
     with open("bundle_images.zip", "rb") as zip_file:
-        return zip_file.read()
+        return zip_file.read(), error_list
 
 # Streamlit UI
 st.title("Bundle Image Downloader")
-st.write("Carica un file CSV con i codici bundle e scarica le immagini corrispondenti.")
+st.write("Upload a CSV file with bundle codes to download corresponding images.")
 
-uploaded_file = st.file_uploader("Carica il file CSV", type=["csv"])
+uploaded_file = st.file_uploader("Upload CSV File", type=["csv"])
 
 if uploaded_file:
-    with st.spinner("Elaborazione in corso..."):
-        zip_data = process_file(uploaded_file)
-    st.success("Elaborazione completata! Scarica il file ZIP qui sotto.")
-    st.download_button(label="📥 Scarica le immagini", data=zip_data, file_name="bundle_images.zip", mime="application/zip")
+    with st.spinner("Processing..."):
+        zip_data, missing_images = process_file(uploaded_file)
+    st.success("Processing complete! Download your ZIP file below.")
+    st.download_button(label="📥 Download Images", data=zip_data, file_name="bundle_images.zip", mime="application/zip")
+    
+    if missing_images:
+        st.warning("Some images were not found:")
+        missing_images_text = "\n".join(missing_images)
+        st.text_area("Missing Images", missing_images_text, height=200)
