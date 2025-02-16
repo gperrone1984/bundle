@@ -5,16 +5,41 @@ import pandas as pd
 import shutil
 from io import BytesIO
 
-# Function to create directories if they do not exist
-def create_directory(path):
-    if not os.path.exists(path):
-        os.makedirs(path)
+# Streamlit UI
+st.title("PDM Bundle Image Creator")
+
+# Sidebar with app functionalities
+st.sidebar.header("🔹 What This App Does")
+st.sidebar.markdown("""
+- 📂 **Uploads a CSV file** containing bundle and product information.
+- 🌐 **Fetches images** for each product from a predefined URL.
+- 🔎 **Searches first for the manufacturer image (p1), then the Fotobox image (p10).**
+- 🗂 **Organizes images** into folders based on the type of bundle.
+- ✏️ **Renames images** for uniform bundles using the bundle code.
+- 📁 **Sorts mixed-set images** into separate folders named after the bundle code.
+- ❌ **Identifies missing images** and logs them in a separate file.
+- 📥 **Generates a ZIP file** containing all retrieved images.
+""")
+
+# Instructions for the input file structure
+st.markdown("""
+### 📌 Instructions:
+To prepare the input file, follow these steps:
+1. Create a **Quick Report** in Akeneo containing the list of products.
+2. Select the following options:
+   - File Type: **CSV**
+   - **All Attributes** or **Grid Context**, to speed up the download (for **Grid Context** select **ID** and **PZN included in the set**)
+   - **With Codes**
+   - **Without Media**
+""")
+
+st.write("Upload a CSV file with bundle codes to download and rename corresponding images.")
 
 # Function to download an image from a predefined URL
 def download_image(product_code):
     if product_code.startswith(('1', '0')):
         product_code = f"D{product_code}"
-
+    
     base_url = "https://cdn.shop-apotheke.com/images/{}-p{}.jpg"
     for suffix in [1, 10]:  # Try suffix p1 first, then p10
         url = base_url.format(product_code, suffix)
@@ -22,6 +47,11 @@ def download_image(product_code):
         if response.status_code == 200:
             return response.content  # Returns image content if found
     return None  # Returns None if the image is not found
+
+# Function to create directories if they do not exist
+def create_directory(path):
+    if not os.path.exists(path):
+        os.makedirs(path)
 
 # Function to process the uploaded CSV file
 def process_file(uploaded_file):
@@ -43,7 +73,7 @@ def process_file(uploaded_file):
         num_products = len(product_codes)  # Count the number of products in the bundle
         
         if len(set(product_codes)) == 1:  # If all product codes are the same, it's a uniform bundle
-            folder_name = os.path.join(base_folder, f"bundle_{num_products}")  # Folder name based on product count
+            folder_name = f"{base_folder}/bundle_{num_products}"  # Folder name based on product count
             create_directory(folder_name)
             product_code = product_codes[0]
             image_data = download_image(product_code)
@@ -66,6 +96,7 @@ def process_file(uploaded_file):
     # Save missing images list as CSV
     missing_images_df = pd.DataFrame(error_list, columns=["PZN Bundle", "PZN with image missing"])
     missing_images_csv = "missing_images.csv"
+    missing_images_txt = "missing_images.txt"
     missing_images_df.to_csv(missing_images_csv, index=False, sep=';')
     
     # Read missing images file before deletion
@@ -78,26 +109,13 @@ def process_file(uploaded_file):
     os.rename("bundle_images_temp.zip", zip_path)
     
     # Remove missing images files from the system before adding to ZIP
-    os.remove(missing_images_csv)
+    if os.path.exists(missing_images_csv):
+        os.remove(missing_images_csv)
+    if os.path.exists(missing_images_txt):
+        os.remove(missing_images_txt)
     
     with open(zip_path, "rb") as zip_file:
         return zip_file.read(), missing_images_data, missing_images_df
-
-# Streamlit UI
-st.title("PDM Bundle Image Creator")
-
-# Sidebar with app functionalities
-st.sidebar.header("🔹 What This App Does")
-st.sidebar.markdown("""
-- 📂 **Uploads a CSV file** containing bundle and product information.
-- 🌐 **Fetches images** for each product from a predefined URL.
-- 🔎 **Searches first for the manufacturer image (p1), then the Fotobox image (p10).**
-- 🗂 **Organizes images** into folders based on the type of bundle.
-- ✏️ **Renames images** for uniform bundles using the bundle code.
-- 📁 **Sorts mixed-set images** into separate folders named after the bundle code.
-- ❌ **Identifies missing images** and logs them in a separate file.
-- 📥 **Generates a ZIP file** containing all retrieved images.
-""")
 
 # File uploader widget
 uploaded_file = st.file_uploader("Upload CSV File", type=["csv"])
