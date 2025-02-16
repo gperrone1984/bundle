@@ -68,17 +68,21 @@ def process_file(uploaded_file):
     missing_images_path = "missing_images.csv"
     missing_images_df.to_csv(missing_images_path, index=False, sep=';')
     
+    # Read missing images file before deletion
+    with open(missing_images_path, "rb") as f:
+        missing_images_data = f.read()
+    
     # Create a ZIP archive excluding missing images files
     zip_path = "bundle_images.zip"
     shutil.make_archive("bundle_images_temp", 'zip', base_folder)
     os.rename("bundle_images_temp.zip", zip_path)
     
-    # Remove missing images files from ZIP
+    # Remove missing images files from the system
     if os.path.exists(missing_images_path):
         os.remove(missing_images_path)
     
     with open(zip_path, "rb") as zip_file:
-        return zip_file.read(), missing_images_df
+        return zip_file.read(), missing_images_data, missing_images_df
 
 # Streamlit UI
 st.title("Bundle Image Downloader")
@@ -90,7 +94,7 @@ uploaded_file = st.file_uploader("Upload CSV File", type=["csv"])
 # Process the uploaded file if available
 if uploaded_file:
     with st.spinner("Processing..."):
-        zip_data, missing_images_df = process_file(uploaded_file)
+        zip_data, missing_images_data, missing_images_df = process_file(uploaded_file)
     st.success("Processing complete! Download your ZIP file below.")
     
     # Download button for the ZIP file
@@ -102,4 +106,4 @@ if uploaded_file:
         st.dataframe(missing_images_df.reset_index(drop=True))  # Display missing images list
         
         # Download button for missing images CSV
-        st.download_button(label="📥 Download Missing Images CSV", data=open("missing_images.csv", "rb").read(), file_name="missing_images.csv", mime="text/csv")
+        st.download_button(label="📥 Download Missing Images CSV", data=missing_images_data, file_name="missing_images.csv", mime="text/csv")
