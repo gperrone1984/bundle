@@ -51,6 +51,24 @@ To prepare the input file, follow these steps:
 
 st.write("Upload a CSV file with bundle codes to download and rename corresponding images.")
 
+# Function to download an image from a predefined URL
+def download_image(product_code):
+    if product_code.startswith(('1', '0')):
+        product_code = f"D{product_code}"
+    
+    base_url = "https://cdn.shop-apotheke.com/images/{}-p{}.jpg"
+    for suffix in [1, 10]:  # Try suffix p1 first, then p10
+        url = base_url.format(product_code, suffix)
+        response = requests.get(url, stream=True)
+        if response.status_code == 200:
+            return response.content  # Returns image content if found
+    return None  # Returns None if the image is not found
+
+# Function to create directories if they do not exist
+def create_directory(path):
+    if not os.path.exists(path):
+        os.makedirs(path)
+
 # File uploader widget
 uploaded_file = st.file_uploader("Upload CSV File", type=["csv"])
 
