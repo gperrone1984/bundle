@@ -65,11 +65,12 @@ def process_file(uploaded_file):
     
     # Save missing images list as CSV
     missing_images_df = pd.DataFrame(error_list, columns=["PZN Bundle", "PZN with image missing"])
-    missing_images_path = "missing_images.csv"
-    missing_images_df.to_csv(missing_images_path, index=False, sep=';')
+    missing_images_csv = "missing_images.csv"
+    missing_images_txt = "missing_images.txt"
+    missing_images_df.to_csv(missing_images_csv, index=False, sep=';')
     
     # Read missing images file before deletion
-    with open(missing_images_path, "rb") as f:
+    with open(missing_images_csv, "rb") as f:
         missing_images_data = f.read()
     
     # Create a ZIP archive excluding missing images files
@@ -77,9 +78,11 @@ def process_file(uploaded_file):
     shutil.make_archive("bundle_images_temp", 'zip', base_folder)
     os.rename("bundle_images_temp.zip", zip_path)
     
-    # Remove missing images files from the system
-    if os.path.exists(missing_images_path):
-        os.remove(missing_images_path)
+    # Remove missing images files from the system before adding to ZIP
+    if os.path.exists(missing_images_csv):
+        os.remove(missing_images_csv)
+    if os.path.exists(missing_images_txt):
+        os.remove(missing_images_txt)
     
     with open(zip_path, "rb") as zip_file:
         return zip_file.read(), missing_images_data, missing_images_df
