@@ -50,6 +50,8 @@ def process_file(uploaded_file):
             if image_data:
                 with open(os.path.join(folder_name, f"{bundle_code}-h1.jpg"), 'wb') as file:
                     file.write(image_data)  # Save the downloaded image
+            else:
+                error_list.append((bundle_code, product_code))  # Log missing images
         else:
             bundle_folder = os.path.join(mixed_folder, bundle_code)  # Folder for mixed bundles
             create_directory(bundle_folder)
@@ -58,12 +60,20 @@ def process_file(uploaded_file):
                 if image_data:
                     with open(os.path.join(bundle_folder, f"{product_code}.jpg"), 'wb') as file:
                         file.write(image_data)  # Save each product image
+                else:
+                    error_list.append((bundle_code, product_code))  # Log missing images
+    
+    # Save missing images list as CSV
+    if error_list:
+        missing_images_df = pd.DataFrame(error_list, columns=["PZN Bundle", "PZN with image missing"])
+        missing_images_path = os.path.join(base_folder, "missing_images.csv")
+        missing_images_df.to_csv(missing_images_path, index=False, sep=';')
     
     # Create a ZIP archive of the downloaded images
     shutil.make_archive(base_folder, 'zip', base_folder)
     
     with open("bundle_images.zip", "rb") as zip_file:
-        return zip_file.read()
+        return zip_file.read(), missing_images_df
 
 # Streamlit UI
 st.title("Bundle Image Downloader")
@@ -75,8 +85,16 @@ uploaded_file = st.file_uploader("Upload CSV File", type=["csv"])
 # Process the uploaded file if available
 if uploaded_file:
     with st.spinner("Processing..."):
-        zip_data = process_file(uploaded_file)
+        zip_data, missing_images_df = process_file(uploaded_file)
     st.success("Processing complete! Download your ZIP file below.")
     
     # Download button for the ZIP file
     st.download_button(label="📥 Download Images", data=zip_data, file_name="bundle_images.zip", mime="application/zip")
+    
+    # Display missing images if any
+    if not missing_images_df.empty:
+        st.warning("Some images were not found:")
+        st.dataframe(missing_images_df.reset_index(drop=True))  # Display missing images list
+        
+        # Download button for missing images CSV
+        st.download_button(label="📥 Download Missing Images CSV", data=open("bundle_images/missing_images.csv", "rb").read(), file_name="missing_images.csv", mime="text/csv")
