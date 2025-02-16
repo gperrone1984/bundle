@@ -123,7 +123,7 @@ if uploaded_file:
     
     # Display missing images if any
     if not missing_images_df.empty:
-        st.warning("Some images were not found:")
+        st.warning("**Some images were not found:**")
         st.dataframe(missing_images_df.reset_index(drop=True))  # Display missing images list
         
         # Download button for missing images CSV
