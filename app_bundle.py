@@ -47,7 +47,7 @@ def process_file(uploaded_file):
                 with open(os.path.join(folder_name, f"{bundle_code}-h1.jpg"), 'wb') as file:
                     file.write(image_data)
             else:
-                error_list.append(f"{bundle_code},{product_code}")
+                error_list.append((bundle_code, product_code))
         else:
             bundle_folder = os.path.join(mixed_folder, bundle_code)
             create_directory(bundle_folder)
@@ -57,11 +57,12 @@ def process_file(uploaded_file):
                     with open(os.path.join(bundle_folder, f"{product_code}.jpg"), 'wb') as file:
                         file.write(image_data)
                 else:
-                    error_list.append(f"{bundle_code},{product_code}")
+                    error_list.append((bundle_code, product_code))
     
     if error_list:
-        with open(os.path.join(base_folder, "missing_images.txt"), 'w') as file:
-            file.write("\n".join(error_list))
+        missing_images_df = pd.DataFrame(error_list, columns=["PZN Bundle", "PZN with image missing"])
+        missing_images_path = os.path.join(base_folder, "missing_images.csv")
+        missing_images_df.to_csv(missing_images_path, index=False, sep=';')
     
     shutil.make_archive(base_folder, 'zip', base_folder)
     
@@ -82,5 +83,6 @@ if uploaded_file:
     
     if missing_images:
         st.warning("Some images were not found:")
-        missing_images_text = "\n".join(missing_images)
+        missing_images_text = "\n".join([f"{bundle},{pzn}" for bundle, pzn in missing_images])
         st.text_area("Missing Images", missing_images_text, height=200)
+        st.download_button(label="📥 Download Missing Images CSV", data=open("bundle_images/missing_images.csv", "rb").read(), file_name="missing_images.csv", mime="text/csv")
