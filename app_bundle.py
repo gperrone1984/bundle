@@ -13,7 +13,7 @@ st.markdown("""
 ### 📌 Instructions:
 To prepare the input file, follow these steps:
 1. Create a **Quick Report** in Akeneo containing the list of products.
-2. Select the following options:
+2. Select the following options:*
    - File Type: **CSV**
    - **All Attributes** or **Grid Context**, to speed up the download (for **Grid Context** select **ID** and **PZN included in the set**)
    - **With Codes** 
@@ -111,7 +111,7 @@ uploaded_file = st.file_uploader("Upload CSV File", type=["csv"])
 if uploaded_file:
     with st.spinner("Processing..."):
         zip_data, missing_images_data, missing_images_df = process_file(uploaded_file)
-    st.success("Processing complete! Download your ZIP file below.")
+    st.success("**Processing complete! Download your ZIP file below.**")
     
     # Download button for the ZIP file
     st.download_button(label="📥 Download Images", data=zip_data, file_name="bundle_images.zip", mime="application/zip")
