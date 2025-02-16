@@ -67,7 +67,7 @@ def process_file(uploaded_file):
     shutil.make_archive(base_folder, 'zip', base_folder)
     
     with open("bundle_images.zip", "rb") as zip_file:
-        return zip_file.read(), error_list
+        return zip_file.read(), missing_images_df
 
 # Streamlit UI
 st.title("Bundle Image Downloader")
@@ -77,12 +77,11 @@ uploaded_file = st.file_uploader("Upload CSV File", type=["csv"])
 
 if uploaded_file:
     with st.spinner("Processing..."):
-        zip_data, missing_images = process_file(uploaded_file)
+        zip_data, missing_images_df = process_file(uploaded_file)
     st.success("Processing complete! Download your ZIP file below.")
     st.download_button(label="📥 Download Images", data=zip_data, file_name="bundle_images.zip", mime="application/zip")
     
-    if missing_images:
+    if not missing_images_df.empty:
         st.warning("Some images were not found:")
-        missing_images_text = "\n".join([f"{bundle},{pzn}" for bundle, pzn in missing_images])
-        st.text_area("Missing Images", missing_images_text, height=200)
+        st.dataframe(missing_images_df)
         st.download_button(label="📥 Download Missing Images CSV", data=open("bundle_images/missing_images.csv", "rb").read(), file_name="missing_images.csv", mime="text/csv")
