@@ -107,6 +107,13 @@ def process_file(uploaded_file):
     
     # Save missing images list as CSV
     missing_images_df = pd.DataFrame(error_list, columns=["PZN Bundle", "PZN with image missing"])
+    
+    # Add column indicating bundle type
+    missing_images_df["Bundle Type"] = missing_images_df["PZN Bundle"].apply(
+        lambda x: f"Bundle {len(data[data['sku'].str.strip() == x]['pzns_in_set'].values[0].split(','))}" 
+        if len(set(data[data['sku'].str.strip() == x]['pzns_in_set'].values[0].split(','))) == 1 
+        else "Misto"
+    )
     missing_images_csv = "missing_images.csv"
     
     missing_images_df.to_csv(missing_images_csv, index=False, sep=';')
