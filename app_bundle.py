@@ -83,5 +83,5 @@ if uploaded_file:
     
     if not missing_images_df.empty:
         st.warning("Some images were not found:")
-        st.dataframe(missing_images_df)
+        st.dataframe(missing_images_df.style.hide_index())
         st.download_button(label="📥 Download Missing Images CSV", data=open("bundle_images/missing_images.csv", "rb").read(), file_name="missing_images.csv", mime="text/csv")
