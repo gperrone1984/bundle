@@ -21,22 +21,6 @@ st.sidebar.markdown("""
 - 📥 **Generates a ZIP file** containing all retrieved images.
 """)
 
-# Sidebar for image preview and download
-st.sidebar.header("🔍 Product Image Preview")
-product_code = st.sidebar.text_input("Enter Product Code:")
-image_type = st.sidebar.selectbox("Select Image Type:", ["p1", "p10", "Custom"], index=0)
-custom_suffix = st.sidebar.text_input("Custom Suffix (if selected)", "")
-
-if st.sidebar.button("Preview Image") and product_code:
-    suffix = custom_suffix if image_type == "Custom" else image_type
-    image_url = f"https://cdn.shop-apotheke.com/images/{product_code}-{suffix}.jpg"
-    response = requests.get(image_url, stream=True)
-    if response.status_code == 200:
-        st.sidebar.image(image_url, caption=f"Preview: {product_code}-{suffix}.jpg")
-        st.sidebar.download_button("📥 Download Image", response.content, file_name=f"{product_code}-{suffix}.jpg", mime="image/jpeg")
-    else:
-        st.sidebar.error("Image not found. Please check the product code and suffix.")
-
 # Instructions for the input file structure
 st.markdown("""
 ### 📌 Instructions:
@@ -68,6 +52,70 @@ def download_image(product_code):
 def create_directory(path):
     if not os.path.exists(path):
         os.makedirs(path)
+
+# Function to process the uploaded CSV file
+def process_file(uploaded_file):
+    data = pd.read_csv(uploaded_file, delimiter=';', dtype=str)  # Read CSV file
+    data.dropna(inplace=True)  # Remove rows with missing values
+    
+    base_folder = "bundle_images"  # Main folder for storing images
+    mixed_folder = os.path.join(base_folder, "mixed_sets")  # Folder for mixed bundles
+    create_directory(base_folder)
+    create_directory(mixed_folder)
+    
+    error_list = []  # List to store missing images
+    
+    # Iterate through each row in the CSV file
+    for _, row in data.iterrows():
+        bundle_code = row['sku'].strip()  # Get bundle code
+        product_codes = row['pzns_in_set'].strip().split(',')  # Get product codes in the bundle
+        
+        num_products = len(product_codes)  # Count the number of products in the bundle
+        
+        if len(set(product_codes)) == 1:  # If all product codes are the same, it's a uniform bundle
+            folder_name = f"{base_folder}/bundle_{num_products}"  # Folder name based on product count
+            create_directory(folder_name)
+            product_code = product_codes[0]
+            image_data = download_image(product_code)
+            if image_data:
+                with open(os.path.join(folder_name, f"{bundle_code}-h1.jpg"), 'wb') as file:
+                    file.write(image_data)  # Save the downloaded image
+            else:
+                error_list.append((bundle_code, product_code))  # Log missing images
+        else:
+            bundle_folder = os.path.join(mixed_folder, bundle_code)  # Folder for mixed bundles
+            create_directory(bundle_folder)
+            for product_code in product_codes:
+                image_data = download_image(product_code)
+                if image_data:
+                    with open(os.path.join(bundle_folder, f"{product_code}.jpg"), 'wb') as file:
+                        file.write(image_data)  # Save each product image
+                else:
+                    error_list.append((bundle_code, product_code))  # Log missing images
+    
+    # Save missing images list as CSV
+    missing_images_df = pd.DataFrame(error_list, columns=["PZN Bundle", "PZN with image missing"])
+    missing_images_csv = "missing_images.csv"
+    missing_images_txt = "missing_images.txt"
+    missing_images_df.to_csv(missing_images_csv, index=False, sep=';')
+    
+    # Read missing images file before deletion
+    with open(missing_images_csv, "rb") as f:
+        missing_images_data = f.read()
+    
+    # Create a ZIP archive excluding missing images files
+    zip_path = "bundle_images.zip"
+    shutil.make_archive("bundle_images_temp", 'zip', base_folder)
+    os.rename("bundle_images_temp.zip", zip_path)
+    
+    # Remove missing images files from the system before adding to ZIP
+    if os.path.exists(missing_images_csv):
+        os.remove(missing_images_csv)
+    if os.path.exists(missing_images_txt):
+        os.remove(missing_images_txt)
+    
+    with open(zip_path, "rb") as zip_file:
+        return zip_file.read(), missing_images_data, missing_images_df
 
 # File uploader widget
 uploaded_file = st.file_uploader("Upload CSV File", type=["csv"])
