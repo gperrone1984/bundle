@@ -8,15 +8,28 @@ from io import BytesIO
 # Streamlit UI
 st.title("PDM Bundle Image Creator")
 
+# Sidebar with app functionalities
+st.sidebar.header("🔹 What This App Does")
+st.sidebar.markdown("""
+- 📂 **Uploads a CSV file** containing bundle and product information.
+- 🌐 **Fetches images** for each product from a predefined URL.
+- 🔎 **Searches first for the manufacturer image (p1), then the Fotobox image (p10).**
+- 🗂 **Organizes images** into folders based on the type of bundle.
+- ✏️ **Renames images** for uniform bundles using the bundle code.
+- 📁 **Sorts mixed-set images** into separate folders named after the bundle code.
+- ❌ **Identifies missing images** and logs them in a separate file.
+- 📥 **Generates a ZIP file** containing all retrieved images.
+""")
+
 # Instructions for the input file structure
 st.markdown("""
 ### 📌 Instructions:
 To prepare the input file, follow these steps:
 1. Create a **Quick Report** in Akeneo containing the list of products.
-2. Select the following options:*
+2. Select the following options:
    - File Type: **CSV**
    - **All Attributes** or **Grid Context**, to speed up the download (for **Grid Context** select **ID** and **PZN included in the set**)
-   - **With Codes** 
+   - **With Codes**
    - **Without Media**
 """)
 
