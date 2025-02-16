@@ -28,6 +28,10 @@ image_type = st.sidebar.selectbox("Select Image Type:", ["p1", "p10", "Custom"],
 custom_suffix = st.sidebar.text_input("Custom Suffix (if selected)", "")
 
 if st.sidebar.button("Preview Image") and product_code:
+    # Add 'D' prefix if product code starts with '1' or '0'
+    if product_code.startswith(('1', '0')):
+        product_code = f"D{product_code}"
+    
     suffix = custom_suffix if image_type == "Custom" else image_type
     image_url = f"https://cdn.shop-apotheke.com/images/{product_code}-{suffix}.jpg"
     response = requests.get(image_url, stream=True)
