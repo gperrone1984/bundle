@@ -4,6 +4,7 @@ import requests
 import pandas as pd
 import shutil
 from io import BytesIO
+from PIL import Image
 
 # Streamlit UI
 st.title("PDM Bundle Image Creator")
@@ -21,32 +22,43 @@ st.sidebar.markdown("""
 - 📥 **Generates a ZIP file** containing all retrieved images.
 """)
 
-# Instructions for the input file structure
-st.markdown("""
-### 📌 Instructions:
-To prepare the input file, follow these steps:
-1. Create a **Quick Report** in Akeneo containing the list of products.
-2. Select the following options:
-   - File Type: **CSV**
-   - **All Attributes** or **Grid Context**, to speed up the download (for **Grid Context** select **ID** and **PZN included in the set**)
-   - **With Codes**
-   - **Without Media**
-""")
-
-st.write("Upload a CSV file with bundle codes to download and rename corresponding images.")
-
 # Function to download an image from a predefined URL
-def download_image(product_code):
+def download_image(product_code, extension):
     if product_code.startswith(('1', '0')):
         product_code = f"D{product_code}"
     
-    base_url = "https://cdn.shop-apotheke.com/images/{}-p{}.jpg"
-    for suffix in [1, 10]:  # Try suffix p1 first, then p10
-        url = base_url.format(product_code, suffix)
-        response = requests.get(url, stream=True)
-        if response.status_code == 200:
-            return response.content  # Returns image content if found
-    return None  # Returns None if the image is not found
+    url = f"https://cdn.shop-apotheke.com/images/{product_code}-p{extension}.jpg"
+    response = requests.get(url, stream=True)
+    if response.status_code == 200:
+        return response.content, url  # Returns image content and URL if found
+    return None, url  # Returns None if the image is not found
+
+# Product Image Preview Section
+st.sidebar.header("🔎 Product Image Preview")
+product_code = st.sidebar.text_input("Enter Product Code:")
+selected_extension = st.sidebar.selectbox("Select Image Type:", ["1", "10", "Custom"], index=0)
+custom_extension = None
+if selected_extension == "Custom":
+    custom_extension = st.sidebar.text_input("Enter Custom Extension:")
+    
+# Display image preview
+if st.sidebar.button("Show Image") and product_code:
+    extension = custom_extension if selected_extension == "Custom" else selected_extension
+    image_data, image_url = download_image(product_code, extension)
+    
+    if image_data:
+        image = Image.open(BytesIO(image_data))
+        st.sidebar.image(image, caption=f"Product: {product_code} (p{extension})", use_column_width=True)
+        
+        # Download button for the image
+        st.sidebar.download_button(
+            label="📥 Download Image",
+            data=image_data,
+            file_name=f"{product_code}-p{extension}.jpg",
+            mime="image/jpeg"
+        )
+    else:
+        st.sidebar.error(f"Image not found for {product_code} with extension p{extension}.")
 
 # Function to create directories if they do not exist
 def create_directory(path):
@@ -76,7 +88,7 @@ def process_file(uploaded_file):
             folder_name = f"{base_folder}/bundle_{num_products}"  # Folder name based on product count
             create_directory(folder_name)
             product_code = product_codes[0]
-            image_data = download_image(product_code)
+            image_data, _ = download_image(product_code, "1")
             if image_data:
                 with open(os.path.join(folder_name, f"{bundle_code}-h1.jpg"), 'wb') as file:
                     file.write(image_data)  # Save the downloaded image
@@ -86,7 +98,7 @@ def process_file(uploaded_file):
             bundle_folder = os.path.join(mixed_folder, bundle_code)  # Folder for mixed bundles
             create_directory(bundle_folder)
             for product_code in product_codes:
-                image_data = download_image(product_code)
+                image_data, _ = download_image(product_code, "1")
                 if image_data:
                     with open(os.path.join(bundle_folder, f"{product_code}.jpg"), 'wb') as file:
                         file.write(image_data)  # Save each product image
@@ -96,23 +108,16 @@ def process_file(uploaded_file):
     # Save missing images list as CSV
     missing_images_df = pd.DataFrame(error_list, columns=["PZN Bundle", "PZN with image missing"])
     missing_images_csv = "missing_images.csv"
-    missing_images_txt = "missing_images.txt"
+    
     missing_images_df.to_csv(missing_images_csv, index=False, sep=';')
     
-    # Read missing images file before deletion
     with open(missing_images_csv, "rb") as f:
         missing_images_data = f.read()
     
-    # Create a ZIP archive excluding missing images files
+    # Create a ZIP archive
     zip_path = "bundle_images.zip"
     shutil.make_archive("bundle_images_temp", 'zip', base_folder)
     os.rename("bundle_images_temp.zip", zip_path)
-    
-    # Remove missing images files from the system before adding to ZIP
-    if os.path.exists(missing_images_csv):
-        os.remove(missing_images_csv)
-    if os.path.exists(missing_images_txt):
-        os.remove(missing_images_txt)
     
     with open(zip_path, "rb") as zip_file:
         return zip_file.read(), missing_images_data, missing_images_df
