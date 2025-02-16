@@ -64,12 +64,11 @@ def process_file(uploaded_file):
                     error_list.append((bundle_code, product_code))  # Log missing images
     
     # Save missing images list as CSV
-    if error_list:
-        missing_images_df = pd.DataFrame(error_list, columns=["PZN Bundle", "PZN with image missing"])
-        missing_images_path = os.path.join(base_folder, "missing_images.csv")
-        missing_images_df.to_csv(missing_images_path, index=False, sep=';')
+    missing_images_df = pd.DataFrame(error_list, columns=["PZN Bundle", "PZN with image missing"])
+    missing_images_path = "missing_images.csv"
+    missing_images_df.to_csv(missing_images_path, index=False, sep=';')
     
-    # Create a ZIP archive of the downloaded images
+    # Create a ZIP archive excluding missing images file
     shutil.make_archive(base_folder, 'zip', base_folder)
     
     with open("bundle_images.zip", "rb") as zip_file:
@@ -97,4 +96,4 @@ if uploaded_file:
         st.dataframe(missing_images_df.reset_index(drop=True))  # Display missing images list
         
         # Download button for missing images CSV
-        st.download_button(label="📥 Download Missing Images CSV", data=open("bundle_images/missing_images.csv", "rb").read(), file_name="missing_images.csv", mime="text/csv")
+        st.download_button(label="📥 Download Missing Images CSV", data=open("missing_images.csv", "rb").read(), file_name="missing_images.csv", mime="text/csv")
