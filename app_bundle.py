@@ -5,6 +5,24 @@ import pandas as pd
 import shutil
 from io import BytesIO
 
+# Instructions for the input file structure
+st.markdown("""
+### 📌 Instructions for Uploading the CSV File
+- The file must be in **CSV format** with `;` as the separator.
+- It should contain **two columns** with the following headers:
+  - **sku** → The bundle code (unique identifier for each bundle).
+  - **pzns_in_set** → A comma-separated list of product codes (PZN codes) included in the bundle.
+
+#### Example of a Valid CSV File:
+```
+sku;pzns_in_set
+BUNDLE001;12345678,87654321
+BUNDLE002;11223344,55667788,99887766
+```
+- Each row represents a bundle, and the **pzns_in_set** column should contain product codes separated by commas.
+- Make sure there are **no empty rows** or missing values.
+""")
+
 # Function to download an image from a predefined URL
 def download_image(product_code):
     if product_code.startswith(('1', '0')):
