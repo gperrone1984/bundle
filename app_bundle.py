@@ -69,9 +69,11 @@ def process_file(uploaded_file):
     missing_images_df.to_csv(missing_images_path, index=False, sep=';')
     
     # Create a ZIP archive excluding missing images file
-    shutil.make_archive(base_folder, 'zip', base_folder)
+    zip_path = "bundle_images.zip"
+    shutil.make_archive("bundle_images_temp", 'zip', base_folder)
+    os.rename("bundle_images_temp.zip", zip_path)
     
-    with open("bundle_images.zip", "rb") as zip_file:
+    with open(zip_path, "rb") as zip_file:
         return zip_file.read(), missing_images_df
 
 # Streamlit UI
