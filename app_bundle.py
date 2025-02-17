@@ -22,9 +22,15 @@ st.sidebar.markdown("""
 - 📥 **Generates a ZIP file** containing all retrieved images.
 """)
 
-# Button to clear cache
-if st.button("🔄 Clear Cache"):
+# Button to clear cache and delete old files
+if st.button("🔄 Clear Cache and Files"):
     st.cache_data.clear()
+    if os.path.exists("bundle_images"):
+        shutil.rmtree("bundle_images")
+    if os.path.exists("bundle_images.zip"):
+        os.remove("bundle_images.zip")
+    if os.path.exists("missing_images.csv"):
+        os.remove("missing_images.csv")
     st.rerun()
 
 # Function to download an image from a predefined URL
