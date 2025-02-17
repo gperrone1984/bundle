@@ -9,6 +9,18 @@ from PIL import Image
 # Streamlit UI
 st.title("PDM Bundle Image Creator")
 
+# Instructions
+st.markdown("""
+📌 **Instructions:**
+To prepare the input file, follow these steps:
+1. Create a **Quick Report** in Akeneo containing the list of products.
+2. Select the following options:
+   - File Type: **CSV**
+   - **All Attributes** or **Grid Context**, to speed up the download (for **Grid Context** select **ID** and **PZN included in the set**)
+   - **With Codes**
+   - **Without Media**
+""")
+
 # Sidebar with app functionalities
 st.sidebar.header("🔹 What This App Does")
 st.sidebar.markdown("""
