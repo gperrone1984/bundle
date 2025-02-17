@@ -26,7 +26,7 @@ st.sidebar.header("🔹 What This App Does")
 st.sidebar.markdown("""
 - 📂 **Uploads a CSV file** containing bundle and product information.
 - 🌐 **Fetches images** for each product from a predefined URL.
-- 🔎 **Searches first for the manufacturer image (p1 to p9), then the Fotobox image (p10 to p18).**
+- 🔎 **Searches first for the manufacturer image (p1), then the Fotobox image (p10).**
 - 🗂 **Organizes images** into folders based on the type of bundle.
 - ✏️ **Renames images** for uniform bundles using the bundle code.
 - 📁 **Sorts mixed-set images** into separate folders named after the bundle code.
@@ -46,14 +46,15 @@ if st.button("🔄 Clear Cache and Files"):
     st.rerun()
 
 # Function to download an image from a predefined URL
-def download_image(product_code, extension):
+def download_image(product_code):
     if product_code.startswith(('1', '0')):
         product_code = f"D{product_code}"
     
-    url = f"https://cdn.shop-apotheke.com/images/{product_code}-p{extension}.jpg"
-    response = requests.get(url, stream=True)
-    if response.status_code == 200:
-        return response.content, url
+    for extension in ["1", "10"]:
+        url = f"https://cdn.shop-apotheke.com/images/{product_code}-p{extension}.jpg"
+        response = requests.get(url, stream=True)
+        if response.status_code == 200:
+            return response.content, url
     return None, None
 
 # Product Image Preview Section
@@ -63,21 +64,21 @@ selected_extension = st.sidebar.selectbox("Select Image Extension:", [str(i) for
 
 # Display image preview
 if st.sidebar.button("Show Image") and product_code:
-    image_data, image_url = download_image(product_code, selected_extension)
+    image_data, image_url = download_image(product_code)
     
     if image_data:
         image = Image.open(BytesIO(image_data))
-        st.sidebar.image(image, caption=f"Product: {product_code} (p{selected_extension})", use_container_width=True)
+        st.sidebar.image(image, caption=f"Product: {product_code}", use_container_width=True)
         
         # Download button for the image
         st.sidebar.download_button(
             label="📥 Download Image",
             data=image_data,
-            file_name=f"{product_code}-p{selected_extension}.jpg",
+            file_name=f"{product_code}.jpg",
             mime="image/jpeg"
         )
     else:
-        st.sidebar.error(f"Image not found for {product_code} with extension p{selected_extension}.")
+        st.sidebar.error(f"Image not found for {product_code}.")
 
 # Function to create directories if they do not exist
 def create_directory(path):
@@ -116,7 +117,7 @@ def process_file(uploaded_file):
             folder_name = f"{base_folder}/bundle_{num_products}"
             create_directory(folder_name)
             product_code = product_codes[0]
-            image_data, _ = download_image(product_code, "1")
+            image_data, _ = download_image(product_code)
             if image_data:
                 with open(os.path.join(folder_name, f"{bundle_code}-h1.jpg"), 'wb') as file:
                     file.write(image_data)
@@ -126,7 +127,7 @@ def process_file(uploaded_file):
             bundle_folder = os.path.join(mixed_folder, bundle_code)
             create_directory(bundle_folder)
             for product_code in product_codes:
-                image_data, _ = download_image(product_code, "1")
+                image_data, _ = download_image(product_code)
                 if image_data:
                     with open(os.path.join(bundle_folder, f"{product_code}.jpg"), 'wb') as file:
                         file.write(image_data)
