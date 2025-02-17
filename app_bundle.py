@@ -88,6 +88,15 @@ def create_directory(path):
 def process_file(uploaded_file):
     uploaded_file.seek(0)  # Reset file pointer to ensure fresh read
     data = pd.read_csv(uploaded_file, delimiter=';', dtype=str)
+    
+    # Ensure necessary columns exist
+    required_columns = {'sku', 'pzns_in_set'}
+    missing_columns = required_columns - set(data.columns)
+    if missing_columns:
+        st.error(f"Missing required columns: {', '.join(missing_columns)}")
+        return None, None, None
+    
+    data = data[list(required_columns)]  # Keep only required columns
     data.dropna(inplace=True)
     
     base_folder = "bundle_images"
@@ -125,11 +134,6 @@ def process_file(uploaded_file):
                     error_list.append((bundle_code, product_code))
     
     missing_images_df = pd.DataFrame(error_list, columns=["PZN Bundle", "PZN with image missing"])
-    missing_images_df["Bundle Type"] = missing_images_df["PZN Bundle"].apply(
-        lambda x: f"Bundle {len(data[data['sku'].str.strip() == x]['pzns_in_set'].values[0].split(','))}" 
-        if len(set(data[data['sku'].str.strip() == x]['pzns_in_set'].values[0].split(','))) == 1 
-        else "Misto"
-    )
     missing_images_csv = "missing_images.csv"
     
     missing_images_df.to_csv(missing_images_csv, index=False, sep=';')
@@ -149,12 +153,11 @@ uploaded_file = st.file_uploader("Upload CSV File", type=["csv"])
 if uploaded_file:
     with st.spinner("Processing..."):
         zip_data, missing_images_data, missing_images_df = process_file(uploaded_file)
-    st.success("**Processing complete! Download your ZIP file below.**")
+    if zip_data:
+        st.success("**Processing complete! Download your ZIP file below.**")
+        st.download_button(label="📥 Download Images", data=zip_data, file_name="bundle_images.zip", mime="application/zip")
     
-    st.download_button(label="📥 Download Images", data=zip_data, file_name="bundle_images.zip", mime="application/zip")
-    
-    if not missing_images_df.empty:
+    if missing_images_df is not None and not missing_images_df.empty:
         st.warning("**Some images were not found:**")
         st.dataframe(missing_images_df.reset_index(drop=True))
-        
         st.download_button(label="📥 Download Missing Images CSV", data=missing_images_data, file_name="missing_images.csv", mime="text/csv")
