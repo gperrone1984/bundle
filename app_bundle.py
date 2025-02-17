@@ -25,7 +25,7 @@ st.sidebar.markdown("""
 # Button to clear cache
 if st.button("🔄 Clear Cache"):
     st.cache_data.clear()
-    st.experimental_rerun()
+    st.rerun()
 
 # Function to download an image from a predefined URL
 def download_image(product_code, extension):
