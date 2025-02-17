@@ -22,6 +22,11 @@ st.sidebar.markdown("""
 - 📥 **Generates a ZIP file** containing all retrieved images.
 """)
 
+# Button to clear cache
+if st.button("🔄 Clear Cache"):
+    st.cache_data.clear()
+    st.experimental_rerun()
+
 # Function to download an image from a predefined URL
 def download_image(product_code, extension):
     if product_code.startswith(('1', '0')):
