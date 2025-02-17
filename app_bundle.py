@@ -1,9 +1,10 @@
+#aggiunto che puó leggere un intero file csv e che nella preview delle immagini puó cercare da 1 a 18
+
 import streamlit as st
 import os
 import requests
 import pandas as pd
 import shutil
-import subprocess
 from io import BytesIO
 from PIL import Image
 
@@ -33,7 +34,6 @@ st.sidebar.markdown("""
 - 📁 **Sorts mixed-set images** into separate folders named after the bundle code.
 - ❌ **Identifies missing images** and logs them in a separate file.
 - 📥 **Generates a ZIP file** containing all retrieved images.
-- 🎨 **Processes bundle 2 images with Photoshop actions from an ATN file.**
 """)
 
 # Button to clear cache and delete old files
@@ -59,33 +59,28 @@ def download_image(product_code):
             return response.content, url
     return None, None
 
-# Function to apply Photoshop actions using an ATN file
-def apply_photoshop_actions(image_path):
-    photoshop_path = r"C:\Program Files\Adobe\Adobe Photoshop 2025\Photoshop.exe"  # Modifica con il percorso corretto
-    atn_file = r"C:\Users\gperrone\Desktop\Set_prog\Sets.atn"  # Modifica con il percorso del file ATN
-    action_set = "Sets"  # Modifica con il nome del set
-    action1 = "2 x side by side"  # Nome della prima azione
-    action2 = "Square box"  # Nome della seconda azione
+# Product Image Preview Section
+st.sidebar.header("🔎 Product Image Preview")
+product_code = st.sidebar.text_input("Enter Product Code:")
+selected_extension = st.sidebar.selectbox("Select Image Extension:", [str(i) for i in range(1, 19)])
+
+# Display image preview
+if st.sidebar.button("Show Image") and product_code:
+    image_data, image_url = download_image(product_code)
     
-    jsx_script = f'''
-    var actionSet = "{action_set}";
-    var actionName1 = "{action1}";
-    var actionName2 = "{action2}";
-    
-    if (app.documents.length > 0) {{
-        app.doAction(actionName1, actionSet);
-        app.doAction(actionName2, actionSet);
-        app.activeDocument.close(SaveOptions.SAVECHANGES);
-    }} else {{
-        alert("Nessuna immagine aperta.");
-    }}
-    '''
-    
-    jsx_path = os.path.join(os.path.dirname(image_path), "apply_action.jsx")
-    with open(jsx_path, "w") as f:
-        f.write(jsx_script)
-    
-    subprocess.run([photoshop_path, image_path, "-r", jsx_path])
+    if image_data:
+        image = Image.open(BytesIO(image_data))
+        st.sidebar.image(image, caption=f"Product: {product_code}", use_container_width=True)
+        
+        # Download button for the image
+        st.sidebar.download_button(
+            label="📥 Download Image",
+            data=image_data,
+            file_name=f"{product_code}.jpg",
+            mime="image/jpeg"
+        )
+    else:
+        st.sidebar.error(f"Image not found for {product_code}.")
 
 # Function to create directories if they do not exist
 def create_directory(path):
@@ -124,16 +119,10 @@ def process_file(uploaded_file):
             folder_name = f"{base_folder}/bundle_{num_products}"
             create_directory(folder_name)
             product_code = product_codes[0]
-            image_path = os.path.join(folder_name, f"{bundle_code}-h1.jpg")
-            
             image_data, _ = download_image(product_code)
             if image_data:
-                with open(image_path, 'wb') as file:
+                with open(os.path.join(folder_name, f"{bundle_code}-h1.jpg"), 'wb') as file:
                     file.write(image_data)
-                
-                # Se il bundle è da 2, applica entrambe le azioni di Photoshop
-                if num_products == 2:
-                    apply_photoshop_actions(image_path)
             else:
                 error_list.append((bundle_code, product_code))
         else:
@@ -170,3 +159,8 @@ if uploaded_file:
     if zip_data:
         st.success("**Processing complete! Download your ZIP file below.**")
         st.download_button(label="📥 Download Images", data=zip_data, file_name="bundle_images.zip", mime="application/zip")
+    
+    if missing_images_df is not None and not missing_images_df.empty:
+        st.warning("**Some images were not found:**")
+        st.dataframe(missing_images_df.reset_index(drop=True))
+        st.download_button(label="📥 Download Missing Images CSV", data=missing_images_data, file_name="missing_images.csv", mime="text/csv")
