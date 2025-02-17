@@ -1,5 +1,3 @@
-#aggiunto nella finestra di errore il tipo di bundle
-
 import streamlit as st
 import os
 import requests
@@ -32,8 +30,8 @@ def download_image(product_code, extension):
     url = f"https://cdn.shop-apotheke.com/images/{product_code}-p{extension}.jpg"
     response = requests.get(url, stream=True)
     if response.status_code == 200:
-        return response.content, url  # Returns image content and URL if found
-    return None, url  # Returns None if the image is not found
+        return response.content, url
+    return None, url
 
 # Product Image Preview Section
 st.sidebar.header("🔎 Product Image Preview")
@@ -69,48 +67,45 @@ def create_directory(path):
 
 # Function to process the uploaded CSV file
 def process_file(uploaded_file):
-    data = pd.read_csv(uploaded_file, delimiter=';', dtype=str)  # Read CSV file
-    data.dropna(inplace=True)  # Remove rows with missing values
+    uploaded_file.seek(0)  # Reset file pointer to ensure fresh read
+    data = pd.read_csv(uploaded_file, delimiter=';', dtype=str)
+    data.dropna(inplace=True)
     
-    base_folder = "bundle_images"  # Main folder for storing images
-    mixed_folder = os.path.join(base_folder, "mixed_sets")  # Folder for mixed bundles
+    base_folder = "bundle_images"
+    mixed_folder = os.path.join(base_folder, "mixed_sets")
     create_directory(base_folder)
     create_directory(mixed_folder)
     
-    error_list = []  # List to store missing images
+    error_list = []
     
-    # Iterate through each row in the CSV file
     for _, row in data.iterrows():
-        bundle_code = row['sku'].strip()  # Get bundle code
-        product_codes = row['pzns_in_set'].strip().split(',')  # Get product codes in the bundle
+        bundle_code = row['sku'].strip()
+        product_codes = row['pzns_in_set'].strip().split(',')
         
-        num_products = len(product_codes)  # Count the number of products in the bundle
+        num_products = len(product_codes)
         
-        if len(set(product_codes)) == 1:  # If all product codes are the same, it's a uniform bundle
-            folder_name = f"{base_folder}/bundle_{num_products}"  # Folder name based on product count
+        if len(set(product_codes)) == 1:
+            folder_name = f"{base_folder}/bundle_{num_products}"
             create_directory(folder_name)
             product_code = product_codes[0]
             image_data, _ = download_image(product_code, "1")
             if image_data:
                 with open(os.path.join(folder_name, f"{bundle_code}-h1.jpg"), 'wb') as file:
-                    file.write(image_data)  # Save the downloaded image
+                    file.write(image_data)
             else:
-                error_list.append((bundle_code, product_code))  # Log missing images
+                error_list.append((bundle_code, product_code))
         else:
-            bundle_folder = os.path.join(mixed_folder, bundle_code)  # Folder for mixed bundles
+            bundle_folder = os.path.join(mixed_folder, bundle_code)
             create_directory(bundle_folder)
             for product_code in product_codes:
                 image_data, _ = download_image(product_code, "1")
                 if image_data:
                     with open(os.path.join(bundle_folder, f"{product_code}.jpg"), 'wb') as file:
-                        file.write(image_data)  # Save each product image
+                        file.write(image_data)
                 else:
-                    error_list.append((bundle_code, product_code))  # Log missing images
+                    error_list.append((bundle_code, product_code))
     
-    # Save missing images list as CSV
     missing_images_df = pd.DataFrame(error_list, columns=["PZN Bundle", "PZN with image missing"])
-    
-    # Add column indicating bundle type
     missing_images_df["Bundle Type"] = missing_images_df["PZN Bundle"].apply(
         lambda x: f"Bundle {len(data[data['sku'].str.strip() == x]['pzns_in_set'].values[0].split(','))}" 
         if len(set(data[data['sku'].str.strip() == x]['pzns_in_set'].values[0].split(','))) == 1 
@@ -123,7 +118,6 @@ def process_file(uploaded_file):
     with open(missing_images_csv, "rb") as f:
         missing_images_data = f.read()
     
-    # Create a ZIP archive
     zip_path = "bundle_images.zip"
     shutil.make_archive("bundle_images_temp", 'zip', base_folder)
     os.rename("bundle_images_temp.zip", zip_path)
@@ -131,22 +125,17 @@ def process_file(uploaded_file):
     with open(zip_path, "rb") as zip_file:
         return zip_file.read(), missing_images_data, missing_images_df
 
-# File uploader widget
 uploaded_file = st.file_uploader("Upload CSV File", type=["csv"])
 
-# Process the uploaded file if available
 if uploaded_file:
     with st.spinner("Processing..."):
         zip_data, missing_images_data, missing_images_df = process_file(uploaded_file)
     st.success("**Processing complete! Download your ZIP file below.**")
     
-    # Download button for the ZIP file
     st.download_button(label="📥 Download Images", data=zip_data, file_name="bundle_images.zip", mime="application/zip")
     
-    # Display missing images if any
     if not missing_images_df.empty:
         st.warning("**Some images were not found:**")
-        st.dataframe(missing_images_df.reset_index(drop=True))  # Display missing images list
+        st.dataframe(missing_images_df.reset_index(drop=True))
         
-        # Download button for missing images CSV
         st.download_button(label="📥 Download Missing Images CSV", data=missing_images_data, file_name="missing_images.csv", mime="text/csv")
