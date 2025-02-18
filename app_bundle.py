@@ -102,7 +102,7 @@ def process_file(uploaded_file):
     
     base_folder = "bundle_images"
     create_directory(base_folder)  # Crea la cartella principale solo una volta
-    mixed_bundles_exist = False  # Flag per verificare se ci sono bundle misti
+    mixed_bundles = []  # Lista per verificare se ci sono bundle misti
     
     error_list = []
     
@@ -123,7 +123,7 @@ def process_file(uploaded_file):
             else:
                 error_list.append((bundle_code, product_code))
         else:
-            mixed_bundles_exist = True  # Esiste almeno un bundle misto
+            mixed_bundles.append(bundle_code)  # Aggiunge il bundle misto alla lista
             bundle_folder = os.path.join(base_folder, "mixed_sets", bundle_code)
             create_directory(bundle_folder)
             for product_code in product_codes:
@@ -135,7 +135,7 @@ def process_file(uploaded_file):
                     error_list.append((bundle_code, product_code))
 
     # Creazione della cartella 'mixed_sets' solo se esistono bundle misti
-    if not mixed_bundles_exist:
+    if not mixed_bundles:
         shutil.rmtree(os.path.join(base_folder, "mixed_sets"), ignore_errors=True)
 
     missing_images_df = pd.DataFrame(error_list, columns=["PZN Bundle", "PZN with image missing"])
@@ -152,17 +152,3 @@ def process_file(uploaded_file):
     
     with open(zip_path, "rb") as zip_file:
         return zip_file.read(), missing_images_data, missing_images_df
-
-uploaded_file = st.file_uploader("Upload CSV File", type=["csv"])
-
-if uploaded_file:
-    with st.spinner("Processing..."):
-        zip_data, missing_images_data, missing_images_df = process_file(uploaded_file)
-    if zip_data:
-        st.success("**Processing complete! Download your ZIP file below.**")
-        st.download_button(label="📥 Download Images", data=zip_data, file_name="bundle_images.zip", mime="application/zip")
-    
-    if missing_images_df is not None and not missing_images_df.empty:
-        st.warning("**Some images were not found:**")
-        st.dataframe(missing_images_df.reset_index(drop=True))
-        st.download_button(label="📥 Download Missing Images CSV", data=missing_images_data, file_name="missing_images.csv", mime="text/csv")
