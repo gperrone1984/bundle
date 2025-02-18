@@ -5,10 +5,22 @@ import pandas as pd
 import shutil
 from io import BytesIO
 from PIL import Image
-import time  # Importato per simulare il caricamento nella progress bar
+import time  # Per gestire la barra di progresso
 
 # Streamlit UI
 st.title("PDM Bundle Image Creator")
+
+# Instructions
+st.markdown("""
+📌 **Instructions:**
+To prepare the input file, follow these steps:
+1. Create a **Quick Report** in Akeneo containing the list of products.
+2. Select the following options:
+   - File Type: **CSV**
+   - **All Attributes** or **Grid Context**, to speed up the download (for **Grid Context** select **ID** and **PZN included in the set**)
+   - **With Codes**
+   - **Without Media**
+""")
 
 # Sidebar with app functionalities
 st.sidebar.header("🔹 What This App Does")
@@ -22,6 +34,17 @@ st.sidebar.markdown("""
 - ❌ **Identifies missing images** and logs them in a separate file.
 - 📥 **Generates a ZIP file** containing all retrieved images.
 """)
+
+# Button to clear cache and delete old files
+if st.button("🔄 Clear Cache and Files"):
+    st.cache_data.clear()
+    if os.path.exists("bundle_images"):
+        shutil.rmtree("bundle_images")
+    if os.path.exists("bundle_images.zip"):
+        os.remove("bundle_images.zip")
+    if os.path.exists("missing_images.csv"):
+        os.remove("missing_images.csv")
+    st.rerun()
 
 # Function to download an image, prioritizing p1 and then p10
 def download_image_for_bundle(product_code):
@@ -37,7 +60,7 @@ def download_image_for_bundle(product_code):
     
     return None  # Return None if no image found
 
-# Sidebar: Product Image Preview Section
+# Product Image Preview Section
 st.sidebar.header("🔎 Product Image Preview")
 product_code = st.sidebar.text_input("Enter Product Code:")
 selected_extension = st.sidebar.selectbox("Select Image Extension:", [str(i) for i in range(1, 19)])
@@ -132,7 +155,7 @@ def process_file(uploaded_file):
                         file.write(image_data)
                 else:
                     error_list.append((bundle_code, product_code))
-        
+
         # Update progress bar
         progress_bar.progress((index + 1) / total_rows)
         time.sleep(0.05)  # Simulazione ritardo per vedere la progressione
@@ -157,13 +180,12 @@ def process_file(uploaded_file):
     with open(zip_path, "rb") as zip_file:
         return zip_file.read(), missing_images_data, missing_images_df
 
-# File uploader
 uploaded_file = st.file_uploader("Upload CSV File", type=["csv"])
 
 if uploaded_file:
-    with st.spinner("Processing... Please wait..."):  # Show spinner
+    with st.spinner("Processing... Please wait..."):
         zip_data, missing_images_data, missing_images_df = process_file(uploaded_file)
-        
+    
     if zip_data:
         st.success("**Processing complete! Download your ZIP file below.**")
         st.download_button(label="📥 Download Images", data=zip_data, file_name="bundle_images.zip", mime="application/zip")
