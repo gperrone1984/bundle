@@ -29,7 +29,7 @@ st.sidebar.markdown("""
 - 🔎 **Searches first for the manufacturer image (p1), then the Fotobox image (p10).**
 - 🗂 **Organizes images** into folders based on the type of bundle.
 - ✏️ **Renames images** for uniform bundles using the bundle code.
-- 📁 **Sorts mixed-set images** into separate folders named after the bundle code.
+- 📁 **Sorts mixed-set images** into separate folders named after the bundle code (only if needed).
 - ❌ **Identifies missing images** and logs them in a separate file.
 - 📥 **Generates a ZIP file** containing all retrieved images.
 """)
@@ -115,9 +115,10 @@ def process_file(uploaded_file):
     data.dropna(inplace=True)
     
     base_folder = "bundle_images"
-    mixed_folder = os.path.join(base_folder, "mixed_sets")
     create_directory(base_folder)
-    create_directory(mixed_folder)
+    
+    mixed_sets_needed = False  # Flag to track if we need the mixed_sets folder
+    mixed_folder = os.path.join(base_folder, "mixed_sets")
     
     error_list = []
     
@@ -139,6 +140,7 @@ def process_file(uploaded_file):
             else:
                 error_list.append((bundle_code, product_code))
         else:  # Mixed bundle
+            mixed_sets_needed = True  # Mark that at least one mixed bundle exists
             bundle_folder = os.path.join(mixed_folder, bundle_code)
             create_directory(bundle_folder)
             for product_code in product_codes:
@@ -149,6 +151,10 @@ def process_file(uploaded_file):
                         file.write(image_data)
                 else:
                     error_list.append((bundle_code, product_code))
+
+    # Remove mixed_sets folder if no mixed bundles were found
+    if not mixed_sets_needed and os.path.exists(mixed_folder):
+        shutil.rmtree(mixed_folder)
     
     # Create missing images report
     missing_images_df = pd.DataFrame(error_list, columns=["PZN Bundle", "PZN with image missing"])
