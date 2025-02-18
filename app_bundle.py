@@ -1,3 +1,5 @@
+#aggiunto che puó leggere un intero file csv e che nella preview delle immagini puó cercare da 1 a 18
+
 import streamlit as st
 import os
 import requests
@@ -7,12 +9,12 @@ from io import BytesIO
 from PIL import Image
 
 # Streamlit UI
-st.title("PDM Bundle Image Creatora")
+st.title("PDM Bundle Image Creator")
 
 # Instructions
 st.markdown("""
 📌 **Instructions:**
-To prepare the input file, follow these steps: ole
+To prepare the input file, follow these steps:
 1. Create a **Quick Report** in Akeneo containing the list of products.
 2. Select the following options:
    - File Type: **CSV**
@@ -101,9 +103,9 @@ def process_file(uploaded_file):
     data.dropna(inplace=True)
     
     base_folder = "bundle_images"
-    create_directory(base_folder)  # Crea la cartella principale solo una volta
-    mixed_bundles_exist = False  # Flag per verificare se ci sono bundle misti
     mixed_folder = os.path.join(base_folder, "mixed_sets")
+    create_directory(base_folder)
+    create_directory(mixed_folder)
     
     error_list = []
     
@@ -124,7 +126,6 @@ def process_file(uploaded_file):
             else:
                 error_list.append((bundle_code, product_code))
         else:
-            mixed_bundles_exist = True
             bundle_folder = os.path.join(mixed_folder, bundle_code)
             create_directory(bundle_folder)
             for product_code in product_codes:
@@ -135,10 +136,6 @@ def process_file(uploaded_file):
                 else:
                     error_list.append((bundle_code, product_code))
     
-    # Rimuove la cartella mixed_sets se non ci sono bundle misti
-    if not mixed_bundles_exist and os.path.exists(mixed_folder):
-        shutil.rmtree(mixed_folder, ignore_errors=True)
-
     missing_images_df = pd.DataFrame(error_list, columns=["PZN Bundle", "PZN with image missing"])
     missing_images_csv = "missing_images.csv"
     
@@ -153,3 +150,17 @@ def process_file(uploaded_file):
     
     with open(zip_path, "rb") as zip_file:
         return zip_file.read(), missing_images_data, missing_images_df
+
+uploaded_file = st.file_uploader("Upload CSV File", type=["csv"])
+
+if uploaded_file:
+    with st.spinner("Processing..."):
+        zip_data, missing_images_data, missing_images_df = process_file(uploaded_file)
+    if zip_data:
+        st.success("**Processing complete! Download your ZIP file below.**")
+        st.download_button(label="📥 Download Images", data=zip_data, file_name="bundle_images.zip", mime="application/zip")
+    
+    if missing_images_df is not None and not missing_images_df.empty:
+        st.warning("**Some images were not found:**")
+        st.dataframe(missing_images_df.reset_index(drop=True))
+        st.download_button(label="📥 Download Missing Images CSV", data=missing_images_data, file_name="missing_images.csv", mime="text/csv")
