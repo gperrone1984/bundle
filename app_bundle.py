@@ -154,17 +154,9 @@ def process_file(uploaded_file):
     if not mixed_bundles_exist:
         shutil.rmtree(os.path.join(base_folder, "mixed_sets"), ignore_errors=True)
 
-    missing_images_df = pd.DataFrame(error_list, columns=["PZN Bundle", "PZN with image missing"])
-    missing_images_csv = "missing_images.csv"
-    
-    missing_images_df.to_csv(missing_images_csv, index=False, sep=';')
-    
-    with open(missing_images_csv, "rb") as f:
-        missing_images_data = f.read()
-    
     zip_path = "bundle_images.zip"
     shutil.make_archive("bundle_images_temp", 'zip', base_folder)
     os.rename("bundle_images_temp.zip", zip_path)
     
     with open(zip_path, "rb") as zip_file:
-        return zip_file.read(), missing_images_data, missing_images_df
+        st.download_button(label="📥 Download Processed Files", data=zip_file, file_name="bundle_images.zip", mime="application/zip")
