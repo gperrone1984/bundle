@@ -5,6 +5,7 @@ import pandas as pd
 import shutil
 from io import BytesIO
 from PIL import Image
+import time  # Importato per simulare il caricamento nella progress bar
 
 # Streamlit UI
 st.title("PDM Bundle Image Creator")
@@ -21,30 +22,6 @@ To prepare the input file, follow these steps:
    - **Without Media**
 """)
 
-# Sidebar with app functionalities
-st.sidebar.header("🔹 What This App Does")
-st.sidebar.markdown("""
-- 📂 **Uploads a CSV file** containing bundle and product information.
-- 🌐 **Fetches images** for each product from a predefined URL.
-- 🔎 **Searches first for the manufacturer image (p1), then the Fotobox image (p10).**
-- 🗂 **Organizes images** into folders based on the type of bundle.
-- ✏️ **Renames images** for uniform bundles using the bundle code.
-- 📁 **Sorts mixed-set images** into separate folders named after the bundle code (only if needed).
-- ❌ **Identifies missing images** and logs them in a separate file.
-- 📥 **Generates a ZIP file** containing all retrieved images.
-""")
-
-# Button to clear cache and delete old files
-if st.button("🔄 Clear Cache and Files"):
-    st.cache_data.clear()
-    if os.path.exists("bundle_images"):
-        shutil.rmtree("bundle_images")
-    if os.path.exists("bundle_images.zip"):
-        os.remove("bundle_images.zip")
-    if os.path.exists("missing_images.csv"):
-        os.remove("missing_images.csv")
-    st.rerun()
-
 # Function to download an image, prioritizing p1 and then p10
 def download_image_for_bundle(product_code):
     if product_code.startswith(('1', '0')):
@@ -59,47 +36,12 @@ def download_image_for_bundle(product_code):
     
     return None  # Return None if no image found
 
-# Product Image Preview Section
-st.sidebar.header("🔎 Product Image Preview")
-product_code = st.sidebar.text_input("Enter Product Code:")
-selected_extension = st.sidebar.selectbox("Select Image Extension:", [str(i) for i in range(1, 19)])
-
-# Function to download an image for preview
-def download_image(product_code, extension):
-    if product_code.startswith(('1', '0')):
-        product_code = f"D{product_code}"
-    
-    url = f"https://cdn.shop-apotheke.com/images/{product_code}-p{extension}.jpg"
-    response = requests.get(url, stream=True)
-    
-    if response.status_code == 200:
-        return response.content, url
-    return None, None
-
-# Display image preview
-if st.sidebar.button("Show Image") and product_code:
-    image_data, image_url = download_image(product_code, selected_extension)
-    
-    if image_data:
-        image = Image.open(BytesIO(image_data))
-        st.sidebar.image(image, caption=f"Product: {product_code} (p{selected_extension})", use_container_width=True)
-        
-        # Download button for the image
-        st.sidebar.download_button(
-            label="📥 Download Image",
-            data=image_data,
-            file_name=f"{product_code}-p{selected_extension}.jpg",
-            mime="image/jpeg"
-        )
-    else:
-        st.sidebar.error(f"⚠️ No image found for {product_code} with -p{selected_extension}.jpg")
-
 # Function to create directories if they do not exist
 def create_directory(path):
     if not os.path.exists(path):
         os.makedirs(path)
 
-# Function to process the uploaded CSV file
+# Function to process the uploaded CSV file with a progress bar
 def process_file(uploaded_file):
     uploaded_file.seek(0)  # Reset file pointer to ensure fresh read
     data = pd.read_csv(uploaded_file, delimiter=';', dtype=str)
@@ -122,7 +64,10 @@ def process_file(uploaded_file):
     
     error_list = []
     
-    for _, row in data.iterrows():
+    total_rows = len(data)
+    progress_bar = st.progress(0)  # Initialize progress bar
+    
+    for index, row in data.iterrows():
         bundle_code = row['sku'].strip()
         product_codes = row['pzns_in_set'].strip().split(',')
         
@@ -151,7 +96,11 @@ def process_file(uploaded_file):
                         file.write(image_data)
                 else:
                     error_list.append((bundle_code, product_code))
-
+        
+        # Update progress bar
+        progress_bar.progress((index + 1) / total_rows)
+        time.sleep(0.1)  # Simulazione ritardo per vedere la progressione
+        
     # Remove mixed_sets folder if no mixed bundles were found
     if not mixed_sets_needed and os.path.exists(mixed_folder):
         shutil.rmtree(mixed_folder)
@@ -172,11 +121,13 @@ def process_file(uploaded_file):
     with open(zip_path, "rb") as zip_file:
         return zip_file.read(), missing_images_data, missing_images_df
 
+# File uploader
 uploaded_file = st.file_uploader("Upload CSV File", type=["csv"])
 
 if uploaded_file:
-    with st.spinner("Processing..."):
+    with st.spinner("Processing... Please wait..."):  # Show spinner
         zip_data, missing_images_data, missing_images_df = process_file(uploaded_file)
+        
     if zip_data:
         st.success("**Processing complete! Download your ZIP file below.**")
         st.download_button(label="📥 Download Images", data=zip_data, file_name="bundle_images.zip", mime="application/zip")
