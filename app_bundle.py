@@ -101,7 +101,7 @@ def create_directory(path):
     if not os.path.exists(path):
         os.makedirs(path)
 
-# Function to process the uploaded CSV file and generate the bundle list
+# Function to process the uploaded CSV file
 def process_file(uploaded_file):
     uploaded_file.seek(0)  # Reset file pointer to ensure fresh read
     data = pd.read_csv(uploaded_file, delimiter=';', dtype=str)
@@ -123,18 +123,17 @@ def process_file(uploaded_file):
     mixed_folder = os.path.join(base_folder, "mixed_sets")
     
     error_list = []
-    bundle_list = []
+    bundle_list = []  # List to store all bundles
 
     for _, row in data.iterrows():
         bundle_code = row['sku'].strip()
         product_codes = row['pzns_in_set'].strip().split(',')
         
         num_products = len(product_codes)
-        bundle_type = f"da {num_products}"
-
-        # Save bundle information
-        bundle_list.append([bundle_code, ','.join(product_codes), bundle_type])
+        bundle_type = f"Bundle of {num_products}"
         
+        bundle_list.append([bundle_code, ', '.join(product_codes), bundle_type])
+
         if len(set(product_codes)) == 1:  # Uniform bundle
             folder_name = f"{base_folder}/bundle_{num_products}"
             create_directory(folder_name)
@@ -159,22 +158,36 @@ def process_file(uploaded_file):
                 else:
                     error_list.append((bundle_code, product_code))
 
-    # Save the bundle list to a CSV file
-    bundle_list_df = pd.DataFrame(bundle_list, columns=["sku", "pzns_in_set", "bundle_type"])
+    # Remove mixed_sets folder if no mixed bundles were found
+    if not mixed_sets_needed and os.path.exists(mixed_folder):
+        shutil.rmtree(mixed_folder)
+
+    # Create bundle list CSV
+    bundle_list_df = pd.DataFrame(bundle_list, columns=["SKU", "PZNs in Set", "Bundle Type"])
     bundle_list_csv = "bundle_list.csv"
     bundle_list_df.to_csv(bundle_list_csv, index=False, sep=';')
+
+    # Create missing images report
+    missing_images_df = pd.DataFrame(error_list, columns=["PZN Bundle", "PZN with image missing"])
+    missing_images_csv = "missing_images.csv"
+    missing_images_df.to_csv(missing_images_csv, index=False, sep=';')
 
     with open(bundle_list_csv, "rb") as f:
         bundle_list_data = f.read()
 
-    return bundle_list_data
+    return bundle_list_data, missing_images_df
 
 uploaded_file = st.file_uploader("Upload CSV File", type=["csv"])
 
 if uploaded_file:
     with st.spinner("Processing..."):
-        bundle_list_data = process_file(uploaded_file)
-    
-    if bundle_list_data:
-        st.success("**Processing complete! Download your files below.**")
-        st.download_button(label="📥 Download Bundle List", data=bundle_list_data, file_name="bundle_list.csv", mime="text/csv")
+        bundle_list_data, missing_images_df = process_file(uploaded_file)
+
+    # Download buttons
+    st.success("**Processing complete!**")
+    st.download_button(label="📥 Download Bundle List", data=bundle_list_data, file_name="bundle_list.csv", mime="text/csv")
+
+    if not missing_images_df.empty:
+        st.warning("**Some images were not found:**")
+        st.dataframe(missing_images_df)
+        st.download_button(label="📥 Download Missing Images CSV", data=missing_images_df.to_csv(index=False, sep=';'), file_name="missing_images.csv", mime="text/csv")
