@@ -7,7 +7,7 @@ from io import BytesIO
 from PIL import Image
 
 # Streamlit UI
-st.title("PDM Bundle Image Creatora")
+st.title("PDM Bundle Image Creator")
 
 # Instructions
 st.markdown("""
