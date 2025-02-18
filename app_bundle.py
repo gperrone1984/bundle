@@ -1,3 +1,4 @@
+# ora rimuove la cartella mixed se non presente nessun buundle misto
 import streamlit as st
 import os
 import requests
@@ -34,28 +35,6 @@ st.sidebar.markdown("""
 - 📥 **Generates a ZIP file** containing all retrieved images.
 """)
 
-# Product Image Preview Section
-st.sidebar.header("🔎 Product Image Preview")
-product_code = st.sidebar.text_input("Enter Product Code:")
-selected_extension = st.sidebar.selectbox("Select Image Extension:", [str(i) for i in range(1, 19)])
-
-if st.sidebar.button("Show Image") and product_code:
-    image_data, image_url = download_image(product_code)
-    
-    if image_data:
-        image = Image.open(BytesIO(image_data))
-        st.sidebar.image(image, caption=f"Product: {product_code}", use_container_width=True)
-        
-        # Download button for the image
-        st.sidebar.download_button(
-            label="📥 Download Image",
-            data=image_data,
-            file_name=f"{product_code}.jpg",
-            mime="image/jpeg"
-        )
-    else:
-        st.sidebar.error(f"Image not found for {product_code}.")
-
 # Button to clear cache and delete old files
 if st.button("🔄 Clear Cache and Files"):
     st.cache_data.clear()
@@ -79,13 +58,28 @@ def download_image(product_code):
             return response.content, url
     return None, None
 
-# Function to automatically detect delimiter
-def detect_delimiter(uploaded_file):
-    sample = uploaded_file.read(1024).decode('utf-8')
-    uploaded_file.seek(0)  # Reset file pointer
-    if ';' in sample:
-        return ';'
-    return ','
+# Product Image Preview Section
+st.sidebar.header("🔎 Product Image Preview")
+product_code = st.sidebar.text_input("Enter Product Code:")
+selected_extension = st.sidebar.selectbox("Select Image Extension:", [str(i) for i in range(1, 19)])
+
+# Display image preview
+if st.sidebar.button("Show Image") and product_code:
+    image_data, image_url = download_image(product_code)
+    
+    if image_data:
+        image = Image.open(BytesIO(image_data))
+        st.sidebar.image(image, caption=f"Product: {product_code}", use_container_width=True)
+        
+        # Download button for the image
+        st.sidebar.download_button(
+            label="📥 Download Image",
+            data=image_data,
+            file_name=f"{product_code}.jpg",
+            mime="image/jpeg"
+        )
+    else:
+        st.sidebar.error(f"Image not found for {product_code}.")
 
 # Function to create directories if they do not exist
 def create_directory(path):
@@ -94,8 +88,8 @@ def create_directory(path):
 
 # Function to process the uploaded CSV file
 def process_file(uploaded_file):
-    delimiter = detect_delimiter(uploaded_file)
-    data = pd.read_csv(uploaded_file, delimiter=delimiter, dtype=str)
+    uploaded_file.seek(0)  # Reset file pointer to ensure fresh read
+    data = pd.read_csv(uploaded_file, delimiter=';', dtype=str)
     
     # Ensure necessary columns exist
     required_columns = {'sku', 'pzns_in_set'}
@@ -113,10 +107,7 @@ def process_file(uploaded_file):
     
     error_list = []
     
-    progress_bar = st.progress(0)
-    total_rows = len(data)
-    
-    for index, row in data.iterrows():
+    for _, row in data.iterrows():
         bundle_code = row['sku'].strip()
         product_codes = row['pzns_in_set'].strip().split(',')
         
@@ -143,11 +134,7 @@ def process_file(uploaded_file):
                         file.write(image_data)
                 else:
                     error_list.append((bundle_code, product_code))
-        
-        progress_bar.progress((index + 1) / total_rows)
-    
-    progress_bar.empty()
-    
+
     # Creazione della cartella 'mixed_sets' solo se esistono bundle misti
     if not mixed_bundles_exist:
         shutil.rmtree(os.path.join(base_folder, "mixed_sets"), ignore_errors=True)
@@ -166,3 +153,17 @@ def process_file(uploaded_file):
     
     with open(zip_path, "rb") as zip_file:
         return zip_file.read(), missing_images_data, missing_images_df
+
+uploaded_file = st.file_uploader("Upload CSV File", type=["csv"])
+
+if uploaded_file:
+    with st.spinner("Processing..."):
+        zip_data, missing_images_data, missing_images_df = process_file(uploaded_file)
+    if zip_data:
+        st.success("**Processing complete! Download your ZIP file below.**")
+        st.download_button(label="📥 Download Images", data=zip_data, file_name="bundle_images.zip", mime="application/zip")
+    
+    if missing_images_df is not None and not missing_images_df.empty:
+        st.warning("**Some images were not found:**")
+        st.dataframe(missing_images_df.reset_index(drop=True))
+        st.download_button(label="📥 Download Missing Images CSV", data=missing_images_data, file_name="missing_images.csv", mime="text/csv")
