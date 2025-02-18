@@ -27,14 +27,17 @@ To prepare the input file, follow these steps:
 # Sidebar with app functionalities
 st.sidebar.header("🔹 What This App Does")
 st.sidebar.markdown("""
+- **This program automates the creation of product bundles by downloading and organizing product images**
 - 📂 **Uploads a CSV file** containing bundle and product information.
-- 🌐 **Fetches images** for each product from a predefined URL.
+- 🌐 **Downloads images** for each product from a specified URL..
 - 🔎 **Searches first for the manufacturer image (p1), then the Fotobox image (p10).**
 - 🗂 **Organizes images** into folders based on the type of bundle.
-- ✏️ **Renames images** for uniform bundles using the bundle code.
-- 📁 **Sorts mixed-set images** into separate folders named after the bundle code (only if needed).
-- ❌ **Identifies missing images** and logs them in a separate file.
+- ✏️ **Renames images** for bundles double, triple etc. using the bundle code.
+- 📁 **Sorts mixed-set images** into separate folders named after the bundle code.
+- ❌ **Identifies missing images** and show/logs them in a separate file.
 - 📥 **Generates a ZIP file** containing all retrieved images.
+- 📥 **Generates a CSV file with a list of Bundle in the file.
+- 🔎 **Preview and download product images.** Useful when p1 or p10 images are missing or when the p1 image is of poor quality.
 """)
 
 # Product Image Preview Section (RESTORED)
@@ -167,7 +170,7 @@ if uploaded_file:
         st.success("**Processing complete! Download your files below.**")
         
         # Download buttons
-        st.download_button(label="📥 Download Images", data=zip_data, file_name="bundle_images.zip", mime="application/zip")
+        st.download_button(label="📥 **Download Images for Bundle Creation**", data=zip_data, file_name="bundle_images.zip", mime="application/zip")
         st.download_button(label="📥 Download Bundle List", data=bundle_list_data, file_name="bundle_list.csv", mime="text/csv")
         
         if missing_images_df is not None and not missing_images_df.empty:
