@@ -5,7 +5,6 @@ import pandas as pd
 import shutil
 from io import BytesIO
 from PIL import Image
-import time  # Per gestire la barra di progresso
 
 # Streamlit UI
 st.title("PDM Bundle Image Creator")
@@ -100,7 +99,7 @@ def create_directory(path):
     if not os.path.exists(path):
         os.makedirs(path)
 
-# Function to process the uploaded CSV file with a progress bar
+# Function to process the uploaded CSV file
 def process_file(uploaded_file):
     uploaded_file.seek(0)  # Reset file pointer to ensure fresh read
     data = pd.read_csv(uploaded_file, delimiter=';', dtype=str)
@@ -123,10 +122,7 @@ def process_file(uploaded_file):
     
     error_list = []
     
-    total_rows = len(data)
-    progress_bar = st.progress(0)  # Initialize progress bar
-    
-    for index, row in data.iterrows():
+    for _, row in data.iterrows():
         bundle_code = row['sku'].strip()
         product_codes = row['pzns_in_set'].strip().split(',')
         
@@ -156,10 +152,6 @@ def process_file(uploaded_file):
                 else:
                     error_list.append((bundle_code, product_code))
 
-        # Update progress bar
-        progress_bar.progress((index + 1) / total_rows)
-        time.sleep(0.05)  # Simulazione ritardo per vedere la progressione
-        
     # Remove mixed_sets folder if no mixed bundles were found
     if not mixed_sets_needed and os.path.exists(mixed_folder):
         shutil.rmtree(mixed_folder)
@@ -183,9 +175,8 @@ def process_file(uploaded_file):
 uploaded_file = st.file_uploader("Upload CSV File", type=["csv"])
 
 if uploaded_file:
-    with st.spinner("Processing... Please wait..."):
+    with st.spinner("Processing..."):
         zip_data, missing_images_data, missing_images_df = process_file(uploaded_file)
-    
     if zip_data:
         st.success("**Processing complete! Download your ZIP file below.**")
         st.download_button(label="📥 Download Images", data=zip_data, file_name="bundle_images.zip", mime="application/zip")
