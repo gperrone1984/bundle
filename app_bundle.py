@@ -27,7 +27,7 @@ To prepare the input file, follow these steps:
 # Sidebar with app functionalities
 st.sidebar.header("🔹 What This App Does")
 st.sidebar.markdown("""
-- **This program automates the creation of product bundles by downloading and organizing product images**
+- ❓ This app automates the **creation of product bundles** by **downloading and organizing product images**
 - 📂 **Uploads a CSV file** containing bundle and product information.
 - 🌐 **Downloads images** for each product from a specified URL..
 - 🔎 **Searches first for the manufacturer image (p1), then the Fotobox image (p10).**
@@ -36,7 +36,7 @@ st.sidebar.markdown("""
 - 📁 **Sorts mixed-set images** into separate folders named after the bundle code.
 - ❌ **Identifies missing images** and show/logs them in a separate file.
 - 📥 **Generates a ZIP file** containing all retrieved images.
-- 📥 **Generates a CSV file with a list of Bundle in the file.
+- 📥 Generates a CSV file with a **list of Bundle** in the file.
 - 🔎 **Preview and download product images.** Useful when p1 or p10 images are missing or when the p1 image is of poor quality.
 """)
 
