@@ -1,4 +1,5 @@
-# ora rimuove la cartella mixed se non presente nessun buundle misto
+#aggiunto che puó leggere un intero file csv e che nella preview delle immagini puó cercare da 1 a 18
+
 import streamlit as st
 import os
 import requests
@@ -102,8 +103,9 @@ def process_file(uploaded_file):
     data.dropna(inplace=True)
     
     base_folder = "bundle_images"
-    create_directory(base_folder)  # Crea la cartella principale solo una volta
-    mixed_bundles_exist = False  # Flag per verificare se ci sono bundle misti
+    mixed_folder = os.path.join(base_folder, "mixed_sets")
+    create_directory(base_folder)
+    create_directory(mixed_folder)
     
     error_list = []
     
@@ -124,8 +126,7 @@ def process_file(uploaded_file):
             else:
                 error_list.append((bundle_code, product_code))
         else:
-            mixed_bundles_exist = True  # Esiste almeno un bundle misto
-            bundle_folder = os.path.join(base_folder, "mixed_sets", bundle_code)
+            bundle_folder = os.path.join(mixed_folder, bundle_code)
             create_directory(bundle_folder)
             for product_code in product_codes:
                 image_data, _ = download_image(product_code)
@@ -134,11 +135,7 @@ def process_file(uploaded_file):
                         file.write(image_data)
                 else:
                     error_list.append((bundle_code, product_code))
-
-    # Creazione della cartella 'mixed_sets' solo se esistono bundle misti
-    if not mixed_bundles_exist:
-        shutil.rmtree(os.path.join(base_folder, "mixed_sets"), ignore_errors=True)
-
+    
     missing_images_df = pd.DataFrame(error_list, columns=["PZN Bundle", "PZN with image missing"])
     missing_images_csv = "missing_images.csv"
     
