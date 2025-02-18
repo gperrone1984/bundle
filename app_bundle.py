@@ -34,6 +34,17 @@ st.sidebar.markdown("""
 - 📥 **Generates a ZIP file** containing all retrieved images.
 """)
 
+# Function to download an image from a predefined URL
+def download_image(product_code, extension="1"):
+    if product_code.startswith(('1', '0')):
+        product_code = f"D{product_code}"
+    
+    url = f"https://cdn.shop-apotheke.com/images/{product_code}-p{extension}.jpg"
+    response = requests.get(url, stream=True)
+    if response.status_code == 200:
+        return response.content, url
+    return None, None
+
 # Product Image Preview Section
 st.sidebar.header("🔎 Product Image Preview")
 product_code = st.sidebar.text_input("Enter Product Code:")
@@ -69,17 +80,6 @@ if st.button("🔄 Clear Cache and Files"):
     if os.path.exists("missing_images.csv"):
         os.remove("missing_images.csv")
     st.rerun()
-
-# Function to download an image from a predefined URL
-def download_image(product_code, extension="1"):
-    if product_code.startswith(('1', '0')):
-        product_code = f"D{product_code}"
-    
-    url = f"https://cdn.shop-apotheke.com/images/{product_code}-p{extension}.jpg"
-    response = requests.get(url, stream=True)
-    if response.status_code == 200:
-        return response.content, url
-    return None, None
 
 # Function to automatically detect delimiter
 def detect_delimiter(uploaded_file):
