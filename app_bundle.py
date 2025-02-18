@@ -7,7 +7,7 @@ from io import BytesIO
 from PIL import Image
 
 # Streamlit UI
-st.title("PDM Bundle Image Creator")
+st.title("PDM Bundle Image Creatora")
 
 # Instructions
 st.markdown("""
@@ -102,7 +102,8 @@ def process_file(uploaded_file):
     
     base_folder = "bundle_images"
     create_directory(base_folder)  # Crea la cartella principale solo una volta
-    mixed_bundles = []  # Lista per verificare se ci sono bundle misti
+    mixed_bundles_exist = False  # Flag per verificare se ci sono bundle misti
+    mixed_folder = os.path.join(base_folder, "mixed_sets")
     
     error_list = []
     
@@ -123,8 +124,8 @@ def process_file(uploaded_file):
             else:
                 error_list.append((bundle_code, product_code))
         else:
-            mixed_bundles.append(bundle_code)  # Aggiunge il bundle misto alla lista
-            bundle_folder = os.path.join(base_folder, "mixed_sets", bundle_code)
+            mixed_bundles_exist = True
+            bundle_folder = os.path.join(mixed_folder, bundle_code)
             create_directory(bundle_folder)
             for product_code in product_codes:
                 image_data, _ = download_image(product_code)
@@ -133,10 +134,10 @@ def process_file(uploaded_file):
                         file.write(image_data)
                 else:
                     error_list.append((bundle_code, product_code))
-
-    # Creazione della cartella 'mixed_sets' solo se esistono bundle misti
-    if not mixed_bundles:
-        shutil.rmtree(os.path.join(base_folder, "mixed_sets"), ignore_errors=True)
+    
+    # Rimuove la cartella mixed_sets se non ci sono bundle misti
+    if not mixed_bundles_exist and os.path.exists(mixed_folder):
+        shutil.rmtree(mixed_folder, ignore_errors=True)
 
     missing_images_df = pd.DataFrame(error_list, columns=["PZN Bundle", "PZN with image missing"])
     missing_images_csv = "missing_images.csv"
