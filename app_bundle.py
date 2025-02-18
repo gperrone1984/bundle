@@ -35,31 +35,6 @@ st.sidebar.markdown("""
 - 📜 **Creates a complete bundle list** including SKU, products in the set, and bundle type.
 """)
 
-# Button to clear cache and delete old files
-if st.button("🔄 Clear Cache and Files"):
-    st.cache_data.clear()
-    for file in ["bundle_images", "bundle_images.zip", "missing_images.csv", "all_bundles.csv"]:
-        if os.path.exists(file):
-            if os.path.isdir(file):
-                shutil.rmtree(file)
-            else:
-                os.remove(file)
-    st.rerun()
-
-# Function to download an image, prioritizing p1 and then p10
-def download_image_for_bundle(product_code):
-    if product_code.startswith(('1', '0')):
-        product_code = f"D{product_code}"
-    
-    for extension in ["1", "10"]:  # Prioritize p1, then p10
-        url = f"https://cdn.shop-apotheke.com/images/{product_code}-p{extension}.jpg"
-        response = requests.get(url, stream=True)
-        
-        if response.status_code == 200:
-            return response.content  # Return first successful match
-    
-    return None  # Return None if no image found
-
 # Function to create directories if they do not exist
 def create_directory(path):
     if not os.path.exists(path):
@@ -94,12 +69,12 @@ def process_file(uploaded_file):
         product_codes = row['pzns_in_set'].strip().split(',')
         
         num_products = len(product_codes)
-        bundle_type = "Uniform" if len(set(product_codes)) == 1 else "Mixed"
+        bundle_type = str(num_products) if len(set(product_codes)) == 1 else "Mixed"
 
         # Add to bundle list
         bundle_list.append((bundle_code, ",".join(product_codes), bundle_type))
         
-        if bundle_type == "Uniform":  # Uniform bundle
+        if bundle_type != "Mixed":  # Uniform bundle
             folder_name = f"{base_folder}/bundle_{num_products}"
             create_directory(folder_name)
             product_code = product_codes[0]
