@@ -12,7 +12,7 @@ st.title("PDM Bundle Image Creatora")
 # Instructions
 st.markdown("""
 📌 **Instructions:**
-To prepare the input file, follow these steps:
+To prepare the input file, follow these steps: ole
 1. Create a **Quick Report** in Akeneo containing the list of products.
 2. Select the following options:
    - File Type: **CSV**
