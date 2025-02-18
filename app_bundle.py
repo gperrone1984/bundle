@@ -9,31 +9,22 @@ from PIL import Image
 # Streamlit UI
 st.title("PDM Bundle Image Creator")
 
-# Instructions
-st.markdown("""
-📌 **Instructions:**
-To prepare the input file, follow these steps:
-1. Create a **Quick Report** in Akeneo containing the list of products.
-2. Select the following options:
-   - File Type: **CSV**
-   - **All Attributes** or **Grid Context**, to speed up the download (for **Grid Context** select **ID** and **PZN included in the set**)
-   - **With Codes**
-   - **Without Media**
-""")
+# Function to download an image, prioritizing p1 and then p10
+def download_image_for_bundle(product_code):
+    if not product_code:
+        return None  # Avoids errors if product_code is empty
 
-# Sidebar with app functionalities
-st.sidebar.header("🔹 What This App Does")
-st.sidebar.markdown("""
-- 📂 **Uploads a CSV file** containing bundle and product information.
-- 🌐 **Fetches images** for each product from a predefined URL.
-- 🔎 **Searches first for the manufacturer image (p1), then the Fotobox image (p10).**
-- 🗂 **Organizes images** into folders based on the type of bundle.
-- ✏️ **Renames images** for uniform bundles using the bundle code.
-- 📁 **Sorts mixed-set images** into separate folders named after the bundle code (only if needed).
-- ❌ **Identifies missing images** and logs them in a separate file.
-- 📥 **Generates a ZIP file** containing all retrieved images.
-- 📜 **Creates a complete bundle list** including SKU, products in the set, and bundle type.
-""")
+    if product_code.startswith(('1', '0')):
+        product_code = f"D{product_code}"
+    
+    for extension in ["1", "10"]:  # Prioritize p1, then p10
+        url = f"https://cdn.shop-apotheke.com/images/{product_code}-p{extension}.jpg"
+        response = requests.get(url, stream=True)
+        
+        if response.status_code == 200:
+            return response.content  # Return first successful match
+    
+    return None  # Return None if no image found
 
 # Function to create directories if they do not exist
 def create_directory(path):
@@ -78,6 +69,12 @@ def process_file(uploaded_file):
             folder_name = f"{base_folder}/bundle_{num_products}"
             create_directory(folder_name)
             product_code = product_codes[0]
+
+            # Debug check
+            if not product_code:
+                st.error(f"Error: Product code missing for bundle {bundle_code}")
+                continue  # Skip this bundle if the product code is missing
+
             image_data = download_image_for_bundle(product_code)  # Try p1, then p10
             
             if image_data:
@@ -90,6 +87,9 @@ def process_file(uploaded_file):
             bundle_folder = os.path.join(mixed_folder, bundle_code)
             create_directory(bundle_folder)
             for product_code in product_codes:
+                if not product_code:
+                    continue  # Skip empty product codes
+
                 image_data = download_image_for_bundle(product_code)  # Try p1, then p10
                 
                 if image_data:
