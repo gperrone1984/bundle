@@ -164,14 +164,16 @@ if uploaded_file:
         zip_data, missing_images_data, missing_images_df, bundle_list_data = process_file(uploaded_file)
 
     if zip_data:
-        st.success("**Processing complete! Download your files below.**")
-        
-        # Download buttons
-        st.download_button(label="📥 Download Images", data=zip_data, file_name="bundle_images.zip", mime="application/zip")
- st.markdown("📄 **Download the list of bundles present in the file:**")
-        st.download_button(label="📥 Download Bundle List", data=bundle_list_data, file_name="bundle_list.csv", mime="text/csv")
-        
-        if missing_images_df is not None and not missing_images_df.empty:
-            st.warning("**Some images were not found:**")
-            st.dataframe(missing_images_df.reset_index(drop=True))
-            st.download_button(label="📥 Download Missing Images CSV", data=missing_images_data, file_name="missing_images.csv", mime="text/csv")
+    st.success("**Processing complete! Download your files below.**")
+
+    # Download buttons
+    st.download_button(label="📥 Download Images", data=zip_data, file_name="bundle_images.zip", mime="application/zip")
+    
+    # Added sentence before the bundle list download button
+    st.markdown("📄 **Download the list of bundles present in the file:**")
+    st.download_button(label="📥 Download Bundle List", data=bundle_list_data, file_name="bundle_list.csv", mime="text/csv")
+
+    if missing_images_df is not None and not missing_images_df.empty:
+        st.warning("**Some images were not found:**")
+        st.dataframe(missing_images_df.reset_index(drop=True))
+        st.download_button(label="📥 Download Missing Images CSV", data=missing_images_data, file_name="missing_images.csv", mime="text/csv")
