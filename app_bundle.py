@@ -57,28 +57,13 @@ def download_image(product_code):
             return response.content, url
     return None, None
 
-# Product Image Preview Section
-st.sidebar.header("🔎 Product Image Preview")
-product_code = st.sidebar.text_input("Enter Product Code:")
-selected_extension = st.sidebar.selectbox("Select Image Extension:", [str(i) for i in range(1, 19)])
-
-# Display image preview
-if st.sidebar.button("Show Image") and product_code:
-    image_data, image_url = download_image(product_code)
-    
-    if image_data:
-        image = Image.open(BytesIO(image_data))
-        st.sidebar.image(image, caption=f"Product: {product_code}", use_container_width=True)
-        
-        # Download button for the image
-        st.sidebar.download_button(
-            label="📥 Download Image",
-            data=image_data,
-            file_name=f"{product_code}.jpg",
-            mime="image/jpeg"
-        )
-    else:
-        st.sidebar.error(f"Image not found for {product_code}.")
+# Function to automatically detect delimiter
+def detect_delimiter(uploaded_file):
+    sample = uploaded_file.read(1024).decode('utf-8')
+    uploaded_file.seek(0)  # Reset file pointer
+    if ';' in sample:
+        return ';'
+    return ','
 
 # Function to create directories if they do not exist
 def create_directory(path):
@@ -87,8 +72,8 @@ def create_directory(path):
 
 # Function to process the uploaded CSV file
 def process_file(uploaded_file):
-    uploaded_file.seek(0)  # Reset file pointer to ensure fresh read
-    data = pd.read_csv(uploaded_file, delimiter=';', dtype=str)
+    delimiter = detect_delimiter(uploaded_file)
+    data = pd.read_csv(uploaded_file, delimiter=delimiter, dtype=str)
     
     # Ensure necessary columns exist
     required_columns = {'sku', 'pzns_in_set'}
@@ -103,10 +88,14 @@ def process_file(uploaded_file):
     base_folder = "bundle_images"
     create_directory(base_folder)  # Crea la cartella principale solo una volta
     mixed_bundles_exist = False  # Flag per verificare se ci sono bundle misti
+    mixed_folder = os.path.join(base_folder, "mixed_sets")
     
     error_list = []
     
-    for _, row in data.iterrows():
+    progress_bar = st.progress(0)
+    total_rows = len(data)
+    
+    for index, row in data.iterrows():
         bundle_code = row['sku'].strip()
         product_codes = row['pzns_in_set'].strip().split(',')
         
@@ -123,8 +112,8 @@ def process_file(uploaded_file):
             else:
                 error_list.append((bundle_code, product_code))
         else:
-            mixed_bundles_exist = True  # Esiste almeno un bundle misto
-            bundle_folder = os.path.join(base_folder, "mixed_sets", bundle_code)
+            mixed_bundles_exist = True
+            bundle_folder = os.path.join(mixed_folder, bundle_code)
             create_directory(bundle_folder)
             for product_code in product_codes:
                 image_data, _ = download_image(product_code)
@@ -133,10 +122,14 @@ def process_file(uploaded_file):
                         file.write(image_data)
                 else:
                     error_list.append((bundle_code, product_code))
-
-    # Creazione della cartella 'mixed_sets' solo se esistono bundle misti
-    if not mixed_bundles_exist:
-        shutil.rmtree(os.path.join(base_folder, "mixed_sets"), ignore_errors=True)
+        
+        progress_bar.progress((index + 1) / total_rows)
+    
+    progress_bar.empty()
+    
+    # Rimuove la cartella mixed_sets se non ci sono bundle misti
+    if not mixed_bundles_exist and os.path.exists(mixed_folder):
+        shutil.rmtree(mixed_folder, ignore_errors=True)
 
     missing_images_df = pd.DataFrame(error_list, columns=["PZN Bundle", "PZN with image missing"])
     missing_images_csv = "missing_images.csv"
