@@ -45,7 +45,26 @@ if st.button("🔄 Clear Cache and Files"):
         os.remove("missing_images.csv")
     st.rerun()
 
-# Function to download an image with a selected extension
+# Function to download an image, prioritizing p1 and then p10
+def download_image_for_bundle(product_code):
+    if product_code.startswith(('1', '0')):
+        product_code = f"D{product_code}"
+    
+    for extension in ["1", "10"]:  # Prioritize p1, then p10
+        url = f"https://cdn.shop-apotheke.com/images/{product_code}-p{extension}.jpg"
+        response = requests.get(url, stream=True)
+        
+        if response.status_code == 200:
+            return response.content  # Return first successful match
+    
+    return None  # Return None if no image found
+
+# Product Image Preview Section
+st.sidebar.header("🔎 Product Image Preview")
+product_code = st.sidebar.text_input("Enter Product Code:")
+selected_extension = st.sidebar.selectbox("Select Image Extension:", [str(i) for i in range(1, 19)])
+
+# Function to download an image for preview
 def download_image(product_code, extension):
     if product_code.startswith(('1', '0')):
         product_code = f"D{product_code}"
@@ -56,11 +75,6 @@ def download_image(product_code, extension):
     if response.status_code == 200:
         return response.content, url
     return None, None
-
-# Product Image Preview Section
-st.sidebar.header("🔎 Product Image Preview")
-product_code = st.sidebar.text_input("Enter Product Code:")
-selected_extension = st.sidebar.selectbox("Select Image Extension:", [str(i) for i in range(1, 19)])
 
 # Display image preview
 if st.sidebar.button("Show Image") and product_code:
@@ -113,27 +127,30 @@ def process_file(uploaded_file):
         
         num_products = len(product_codes)
         
-        if len(set(product_codes)) == 1:
+        if len(set(product_codes)) == 1:  # Uniform bundle
             folder_name = f"{base_folder}/bundle_{num_products}"
             create_directory(folder_name)
             product_code = product_codes[0]
-            image_data, _ = download_image(product_code, "1")  # Default extension to "1"
+            image_data = download_image_for_bundle(product_code)  # Try p1, then p10
+            
             if image_data:
                 with open(os.path.join(folder_name, f"{bundle_code}-h1.jpg"), 'wb') as file:
                     file.write(image_data)
             else:
                 error_list.append((bundle_code, product_code))
-        else:
+        else:  # Mixed bundle
             bundle_folder = os.path.join(mixed_folder, bundle_code)
             create_directory(bundle_folder)
             for product_code in product_codes:
-                image_data, _ = download_image(product_code, "1")  # Default extension to "1"
+                image_data = download_image_for_bundle(product_code)  # Try p1, then p10
+                
                 if image_data:
                     with open(os.path.join(bundle_folder, f"{product_code}.jpg"), 'wb') as file:
                         file.write(image_data)
                 else:
                     error_list.append((bundle_code, product_code))
     
+    # Create missing images report
     missing_images_df = pd.DataFrame(error_list, columns=["PZN Bundle", "PZN with image missing"])
     missing_images_csv = "missing_images.csv"
     
