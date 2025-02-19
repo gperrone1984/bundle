@@ -4,6 +4,7 @@ import os
 import requests
 import pandas as pd
 import shutil
+import random
 from io import BytesIO
 from PIL import Image, ImageChops
 
@@ -167,13 +168,12 @@ To prepare the input file, follow these steps:
    - **Without Media**
 """)
 
-# Clear Cache Button
+# Clear Cache Button: quando viene cliccato, cancella tutto (stato, file, output) e ricarica la pagina come all'inizio.
 if st.button("🧹 Clear Cache and Reset Data"):
     st.session_state.clear()
     st.cache_data.clear()
     clear_old_data()
-    # Inietta JavaScript per forzare il reload della pagina
-    components.html("<script>window.location.reload();</script>", height=0)
+    components.html("<script>window.location.href=window.location.origin+window.location.pathname;</script>", height=0)
 
 # Sidebar with functionalities
 st.sidebar.header("🔹 What This App Does")
@@ -190,7 +190,7 @@ st.sidebar.markdown("""
 - Provides a tool to preview and download product images.
 """)
 
-# Product Image Preview Section with spinner
+# Product Image Preview Section with spinner next to the button
 st.sidebar.header("🔎 Product Image Preview")
 product_code = st.sidebar.text_input("Enter Product Code:")
 selected_extension = st.sidebar.selectbox("Select Image Extension:", [str(i) for i in range(1, 19)])
@@ -215,18 +215,16 @@ if show_image and product_code:
     else:
         st.sidebar.error(f"⚠️ No image found for {product_code} with -p{selected_extension}.jpg")
 
-# Main content container
-main_container = st.container()
-with main_container:
-    uploaded_file = st.file_uploader("Upload CSV File", type=["csv"])
-    if uploaded_file:
-        with st.spinner("Processing..."):
-            zip_data, missing_images_data, missing_images_df, bundle_list_data = process_file(uploaded_file)
-        if zip_data:
-            st.success("**Processing complete! Download your files below.**")
-            st.download_button(label="📥 **Download Images for Bundle Creation**", data=zip_data, file_name="bundle_images.zip", mime="application/zip")
-            st.download_button(label="📥 Download Bundle List", data=bundle_list_data, file_name="bundle_list.csv", mime="text/csv")
-            if missing_images_df is not None and not missing_images_df.empty:
-                st.warning("**Some images were not found:**")
-                st.dataframe(missing_images_df.reset_index(drop=True))
-                st.download_button(label="📥 Download Missing Images CSV", data=missing_images_data, file_name="missing_images.csv", mime="text/csv")
+# Main content container: usa una chiave univoca per il file uploader, così da non conservare lo stato al reload
+uploaded_file = st.file_uploader("Upload CSV File", type=["csv"], key="file_uploader_" + str(random.randint(0,1000000)))
+if uploaded_file:
+    with st.spinner("Processing..."):
+        zip_data, missing_images_data, missing_images_df, bundle_list_data = process_file(uploaded_file)
+    if zip_data:
+        st.success("**Processing complete! Download your files below.**")
+        st.download_button(label="📥 **Download Images for Bundle Creation**", data=zip_data, file_name="bundle_images.zip", mime="application/zip")
+        st.download_button(label="📥 Download Bundle List", data=bundle_list_data, file_name="bundle_list.csv", mime="text/csv")
+        if missing_images_df is not None and not missing_images_df.empty:
+            st.warning("**Some images were not found:**")
+            st.dataframe(missing_images_df.reset_index(drop=True))
+            st.download_button(label="📥 Download Missing Images CSV", data=missing_images_data, file_name="missing_images.csv", mime="text/csv")
