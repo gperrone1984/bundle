@@ -4,7 +4,6 @@ import os
 import requests
 import pandas as pd
 import shutil
-import random
 from io import BytesIO
 from PIL import Image, ImageChops
 
@@ -168,7 +167,7 @@ To prepare the input file, follow these steps:
    - **Without Media**
 """)
 
-# Clear Cache Button: quando viene cliccato, cancella tutto (stato, file, output) e ricarica la pagina come all'inizio.
+# Clear Cache Button: questa operazione elimina tutto e ricarica la pagina iniziale
 if st.button("🧹 Clear Cache and Reset Data"):
     st.session_state.clear()
     st.cache_data.clear()
@@ -190,7 +189,7 @@ st.sidebar.markdown("""
 - Provides a tool to preview and download product images.
 """)
 
-# Product Image Preview Section with spinner next to the button
+# Product Image Preview Section with spinner
 st.sidebar.header("🔎 Product Image Preview")
 product_code = st.sidebar.text_input("Enter Product Code:")
 selected_extension = st.sidebar.selectbox("Select Image Extension:", [str(i) for i in range(1, 19)])
@@ -215,8 +214,8 @@ if show_image and product_code:
     else:
         st.sidebar.error(f"⚠️ No image found for {product_code} with -p{selected_extension}.jpg")
 
-# Main content container: usa una chiave univoca per il file uploader, così da non conservare lo stato al reload
-uploaded_file = st.file_uploader("Upload CSV File", type=["csv"], key="file_uploader_" + str(random.randint(0,1000000)))
+# Main content container per upload e processing
+uploaded_file = st.file_uploader("Upload CSV File", type=["csv"], key="file_uploader")
 if uploaded_file:
     with st.spinner("Processing..."):
         zip_data, missing_images_data, missing_images_df, bundle_list_data = process_file(uploaded_file)
