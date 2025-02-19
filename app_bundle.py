@@ -79,18 +79,14 @@ def process_file(uploaded_file):
     if missing_columns:
         st.error(f"Missing required columns: {', '.join(missing_columns)}")
         return None, None, None, None
-
     data = data[list(required_columns)]
     data.dropna(inplace=True)
-
     base_folder = "bundle_images"
     os.makedirs(base_folder, exist_ok=True)
-
     mixed_sets_needed = False
     mixed_folder = os.path.join(base_folder, "mixed_sets")
-    error_list = []      # Tuples (bundle_code, product_code) per immagini mancanti
-    bundle_list = []     # Dettagli dei bundle
-
+    error_list = []
+    bundle_list = []
     for _, row in data.iterrows():
         bundle_code = row['sku'].strip()
         product_codes = [code.strip() for code in row['pzns_in_set'].strip().split(',')]
@@ -100,7 +96,6 @@ def process_file(uploaded_file):
         else:
             bundle_type = "mixed"
         bundle_list.append([bundle_code, ', '.join(product_codes), bundle_type])
-
         if len(set(product_codes)) == 1:
             folder_name = f"{base_folder}/bundle_{num_products}"
             os.makedirs(folder_name, exist_ok=True)
@@ -132,10 +127,8 @@ def process_file(uploaded_file):
                         file.write(image_data)
                 else:
                     error_list.append((bundle_code, product_code))
-
     if not mixed_sets_needed and os.path.exists(mixed_folder):
         shutil.rmtree(mixed_folder)
-
     if error_list:
         missing_images_df = pd.DataFrame(error_list, columns=["PZN Bundle", "PZN with image missing"])
         missing_images_df = missing_images_df.groupby("PZN Bundle", as_index=False).agg({
@@ -143,18 +136,15 @@ def process_file(uploaded_file):
         })
     else:
         missing_images_df = pd.DataFrame(columns=["PZN Bundle", "PZN with image missing"])
-    
     missing_images_csv = "missing_images.csv"
     missing_images_df.to_csv(missing_images_csv, index=False, sep=';')
     with open(missing_images_csv, "rb") as f:
         missing_images_data = f.read()
-
     bundle_list_df = pd.DataFrame(bundle_list, columns=["sku", "pzns_in_set", "bundle type"])
     bundle_list_csv = "bundle_list.csv"
     bundle_list_df.to_csv(bundle_list_csv, index=False, sep=';')
     with open(bundle_list_csv, "rb") as f:
         bundle_list_data = f.read()
-
     zip_path = "bundle_images.zip"
     shutil.make_archive("bundle_images_temp", 'zip', base_folder)
     os.rename("bundle_images_temp.zip", zip_path)
@@ -177,31 +167,30 @@ To prepare the input file, follow these steps:
    - **Without Media**
 """)
 
-# Clear Cache Button: cancella cache, file e anche tutto il contenuto generato (output)
+# Clear Cache Button
 if st.button("🧹 Clear Cache and Reset Data"):
     st.session_state.clear()
     st.cache_data.clear()
     clear_old_data()
-    # Inietta JavaScript per forzare il reload della pagina (cancella anche gli output)
+    # Inietta JavaScript per forzare il reload della pagina
     components.html("<script>window.location.reload();</script>", height=0)
 
-# Sidebar with functionalities remains unchanged
+# Sidebar with functionalities
 st.sidebar.header("🔹 What This App Does")
 st.sidebar.markdown("""
-- This app automates the creation of product bundles by downloading and organizing product images.
+- Automates the creation of product bundles by downloading and organizing product images.
 - Upload a CSV file with bundle and product information.
 - Downloads images for each product from a specified URL.
 - Searches first for the manufacturer image (p1), then the Fotobox image (p10).
 - Organizes images into folders based on the bundle type.
 - Renames images for bundles double, triple etc. using the bundle code.
-- Sorts mixed-set images into separate folders named after the bundle code.
+- Sorts mixed-set images into separate folders.
 - Identifies missing images and logs them in a separate file.
-- Generates a ZIP file containing all retrieved images.
-- Generates a CSV file with a list of bundles.
-- Provides a tool to preview and download product images (useful when p1 or p10 images are missing or low quality).
+- Generates a ZIP file of retrieved images and a CSV file with bundle details.
+- Provides a tool to preview and download product images.
 """)
 
-# Product Image Preview Section with spinner next to the button
+# Product Image Preview Section with spinner
 st.sidebar.header("🔎 Product Image Preview")
 product_code = st.sidebar.text_input("Enter Product Code:")
 selected_extension = st.sidebar.selectbox("Select Image Extension:", [str(i) for i in range(1, 19)])
@@ -226,7 +215,7 @@ if show_image and product_code:
     else:
         st.sidebar.error(f"⚠️ No image found for {product_code} with -p{selected_extension}.jpg")
 
-# Main content container for file upload and processing results
+# Main content container
 main_container = st.container()
 with main_container:
     uploaded_file = st.file_uploader("Upload CSV File", type=["csv"])
