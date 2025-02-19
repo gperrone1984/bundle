@@ -4,7 +4,7 @@ import requests
 import pandas as pd
 import shutil
 from io import BytesIO
-from PIL import Image
+from PIL import Image, ImageChops
 
 # Streamlit UI
 st.title("PDM Bundle Image Creator")
@@ -90,6 +90,43 @@ if st.sidebar.button("Show Image") and product_code:
     else:
         st.sidebar.error(f"⚠️ No image found for {product_code} with -p{selected_extension}.jpg")
 
+# Function to trim white border from an image
+def trim(im):
+    bg = Image.new(im.mode, im.size, (255, 255, 255))  # White background
+    diff = ImageChops.difference(im, bg)
+    bbox = diff.getbbox()
+    if bbox:
+        return im.crop(bbox)
+    return im  # Return original if no white border found
+
+# Function to process double bundle image (for bundle_2)
+def process_double_bundle_image(image):
+    # Ritaglia il bordo bianco
+    image = trim(image)
+    
+    # Ottieni le dimensioni
+    width, height = image.size
+    
+    # Crea una nuova immagine affiancando due copie dell'immagine originale
+    merged_width = width * 2
+    merged_height = height
+    merged_image = Image.new("RGB", (merged_width, merged_height), (255, 255, 255))
+    merged_image.paste(image, (0, 0))
+    merged_image.paste(image, (width, 0))
+    
+    # Calcola il fattore di scala per adattare l'immagine in una tela 1000x1000 mantenendo le proporzioni
+    scale_factor = min(1000 / merged_width, 1000 / merged_height)
+    new_size = (int(merged_width * scale_factor), int(merged_height * scale_factor))
+    resized_image = merged_image.resize(new_size, Image.LANCZOS)
+    
+    # Crea una tela 1000x1000 con sfondo bianco e centra l'immagine ridimensionata
+    final_image = Image.new("RGB", (1000, 1000), (255, 255, 255))
+    x_offset = (1000 - new_size[0]) // 2
+    y_offset = (1000 - new_size[1]) // 2
+    final_image.paste(resized_image, (x_offset, y_offset))
+    
+    return final_image
+
 # Function to process the uploaded CSV file
 def process_file(uploaded_file):
     uploaded_file.seek(0)  # Reset file pointer to ensure fresh read
@@ -116,7 +153,7 @@ def process_file(uploaded_file):
 
     for _, row in data.iterrows():
         bundle_code = row['sku'].strip()
-        product_codes = row['pzns_in_set'].strip().split(',')
+        product_codes = [code.strip() for code in row['pzns_in_set'].strip().split(',')]
         
         num_products = len(product_codes)
         bundle_type = f"bundle of {num_products}"
@@ -130,8 +167,18 @@ def process_file(uploaded_file):
             image_data = download_image(product_code, "1")[0] or download_image(product_code, "10")[0]  # Try p1, then p10
             
             if image_data:
-                with open(os.path.join(folder_name, f"{bundle_code}-h1.jpg"), 'wb') as file:
-                    file.write(image_data)
+                # Se il bundle contiene 2 immagini, esegui la modifica prima di salvare
+                if num_products == 2:
+                    try:
+                        img = Image.open(BytesIO(image_data))
+                        final_img = process_double_bundle_image(img)
+                        final_img.save(os.path.join(folder_name, f"{bundle_code}-h1.jpg"), "JPEG", quality=95)
+                    except Exception as e:
+                        st.error(f"Error processing image for bundle {bundle_code}: {e}")
+                        error_list.append((bundle_code, product_code))
+                else:
+                    with open(os.path.join(folder_name, f"{bundle_code}-h1.jpg"), 'wb') as file:
+                        file.write(image_data)
             else:
                 error_list.append((bundle_code, product_code))
         else:  # Mixed bundle
