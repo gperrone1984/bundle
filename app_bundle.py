@@ -21,10 +21,22 @@ To prepare the input file, follow these steps:
    - **Without Media**
 """)
 
-# Button to clear cache and reset session state
+# Function to delete the previous bundle_images folder
+def clear_old_data():
+    if os.path.exists("bundle_images"):
+        shutil.rmtree("bundle_images")
+    if os.path.exists("bundle_images.zip"):
+        os.remove("bundle_images.zip")
+    if os.path.exists("missing_images.csv"):
+        os.remove("missing_images.csv")
+    if os.path.exists("bundle_list.csv"):
+        os.remove("bundle_list.csv")
+
+# Button to clear cache and delete old files
 if st.button("🧹 Clear Cache and Reset Data"):
     st.session_state.clear()
     st.cache_data.clear()
+    clear_old_data()  # Delete old files
     st.rerun()
 
 # Sidebar with app functionalities
