@@ -37,7 +37,7 @@ if st.button("🧹 Clear Cache and Reset Data"):
     clear_old_data()
     try:
         st.experimental_rerun()
-    except st.runtime.scriptrunner.RerunException:
+    except Exception:
         pass
 
 # Sidebar Information
@@ -63,14 +63,14 @@ def download_image(product_code, extension):
         return response.content, url
     return None, None
 
-# Funzione per ritagliare automaticamente il bordo bianco
+# Function to trim white borders
 def trim(im):
     bg = Image.new(im.mode, im.size, (255, 255, 255))
     diff = ImageChops.difference(im, bg)
     bbox = diff.getbbox()
     return im.crop(bbox) if bbox else im
 
-# Funzione per modificare le immagini in bundle_2
+# Function to modify images in bundle_2
 def modify_bundle_2_images():
     bundle_2_folder = os.path.join("bundle_images", "bundle_2")
     if not os.path.exists(bundle_2_folder):
@@ -115,7 +115,7 @@ def modify_bundle_2_images():
             st.warning(f"Errore con {img_file}: {e}")
     st.success("🎉 Modifica di tutte le immagini in 'bundle_2' completata!")
 
-# Funzione per processare il file CSV caricato
+# Function to process the uploaded CSV file
 def process_file(uploaded_file):
     uploaded_file.seek(0)
     data = pd.read_csv(uploaded_file, delimiter=';', dtype=str)
