@@ -21,7 +21,7 @@ To prepare the input file, follow these steps:
    - **Without Media**
 """)
 
-# Function to delete the previous bundle_images folder
+# Function to delete the previous bundle_images folder and other file outputs
 def clear_old_data():
     if os.path.exists("bundle_images"):
         shutil.rmtree("bundle_images")
@@ -49,13 +49,13 @@ st.sidebar.markdown("""
 - 🗂 **Organizes images** into folders based on the type of bundle.
 - ✏️ **Renames images** for bundles double, triple etc. using the bundle code.
 - 📁 **Sorts mixed-set images** into separate folders named after the bundle code.
-- ❌ **Identifies missing images** and show/logs them in a separate file.
+- ❌ **Identifies missing images** and shows/logs them in a separate file.
 - 📥 **Generates a ZIP file** containing all retrieved images.
 - 📥 Generates a CSV file with a **list of Bundle** in the file.
 - 🔎 **Tool Preview and download product images:** Useful when p1 or p10 images are missing or when the p1 image is of poor quality.
 """)
 
-# Product Image Preview Section (RESTORED)
+# Product Image Preview Section
 st.sidebar.header("🔎 Product Image Preview")
 product_code = st.sidebar.text_input("Enter Product Code:")
 selected_extension = st.sidebar.selectbox("Select Image Extension:", [str(i) for i in range(1, 19)])
@@ -72,7 +72,7 @@ def download_image(product_code, extension):
         return response.content, url
     return None, None
 
-# Display image preview (RESTORED)
+# Display image preview
 if st.sidebar.button("Show Image") and product_code:
     image_data, image_url = download_image(product_code, selected_extension)
     
@@ -107,7 +107,7 @@ def process_double_bundle_image(image):
     # Ottieni le dimensioni
     width, height = image.size
     
-    # Crea una nuova immagine affiancando due copie dell'immagine originale
+    # Crea una nuova immagine affiancando due copie dell'immagine ritagliata
     merged_width = width * 2
     merged_height = height
     merged_image = Image.new("RGB", (merged_width, merged_height), (255, 255, 255))
@@ -148,8 +148,8 @@ def process_file(uploaded_file):
     mixed_sets_needed = False  # Flag to track if we need the mixed_sets folder
     mixed_folder = os.path.join(base_folder, "mixed_sets")
     
-    error_list = []
-    bundle_list = []  # New list to store bundle details
+    error_list = []  # Lista di tuple (bundle_code, product_code) per cui manca l'immagine
+    bundle_list = []  # Lista per memorizzare i dettagli del bundle
 
     for _, row in data.iterrows():
         bundle_code = row['sku'].strip()
@@ -158,16 +158,16 @@ def process_file(uploaded_file):
         num_products = len(product_codes)
         bundle_type = f"bundle of {num_products}"
         
-        bundle_list.append([bundle_code, ', '.join(product_codes), bundle_type])  # Add to bundle list
+        bundle_list.append([bundle_code, ', '.join(product_codes), bundle_type])  # Aggiunge alla lista del bundle
 
-        if len(set(product_codes)) == 1:  # Uniform bundle
+        if len(set(product_codes)) == 1:  # Bundle uniforme
             folder_name = f"{base_folder}/bundle_{num_products}"
             os.makedirs(folder_name, exist_ok=True)
             product_code = product_codes[0]
-            image_data = download_image(product_code, "1")[0] or download_image(product_code, "10")[0]  # Try p1, then p10
+            image_data = download_image(product_code, "1")[0] or download_image(product_code, "10")[0]  # Prova p1, poi p10
             
             if image_data:
-                # Se il bundle contiene 2 immagini, esegui la modifica prima di salvare
+                # Se il bundle contiene 2 immagini, esegue la modifica prima di salvare
                 if num_products == 2:
                     try:
                         img = Image.open(BytesIO(image_data))
@@ -181,7 +181,7 @@ def process_file(uploaded_file):
                         file.write(image_data)
             else:
                 error_list.append((bundle_code, product_code))
-        else:  # Mixed bundle
+        else:  # Bundle misto
             mixed_sets_needed = True
             bundle_folder = os.path.join(mixed_folder, bundle_code)
             os.makedirs(bundle_folder, exist_ok=True)
@@ -194,31 +194,35 @@ def process_file(uploaded_file):
                 else:
                     error_list.append((bundle_code, product_code))
 
-    # Remove mixed_sets folder if no mixed bundles were found
+    # Rimuove la cartella mixed_sets se non sono stati trovati bundle misti
     if not mixed_sets_needed and os.path.exists(mixed_folder):
         shutil.rmtree(mixed_folder)
 
-    # Create missing images report
-    missing_images_df = pd.DataFrame(error_list, columns=["PZN Bundle", "PZN with image missing"])
+    # Crea il report dei dati mancanti aggregando le PZN per bundle
+    if error_list:
+        missing_images_df = pd.DataFrame(error_list, columns=["PZN Bundle", "PZN with image missing"])
+        missing_images_df = missing_images_df.groupby("PZN Bundle", as_index=False).agg({
+            "PZN with image missing": lambda x: ', '.join(x)
+        })
+    else:
+        missing_images_df = pd.DataFrame(columns=["PZN Bundle", "PZN with image missing"])
+    
     missing_images_csv = "missing_images.csv"
     missing_images_df.to_csv(missing_images_csv, index=False, sep=';')
-
     with open(missing_images_csv, "rb") as f:
         missing_images_data = f.read()
 
-    # Create bundle list CSV
+    # Crea il CSV della lista dei bundle
     bundle_list_df = pd.DataFrame(bundle_list, columns=["sku", "pzns_in_set", "bundle type"])
     bundle_list_csv = "bundle_list.csv"
     bundle_list_df.to_csv(bundle_list_csv, index=False, sep=';')
-
     with open(bundle_list_csv, "rb") as f:
         bundle_list_data = f.read()
 
-    # Create ZIP file of images
+    # Crea il file ZIP delle immagini
     zip_path = "bundle_images.zip"
     shutil.make_archive("bundle_images_temp", 'zip', base_folder)
     os.rename("bundle_images_temp.zip", zip_path)
-
     with open(zip_path, "rb") as zip_file:
         return zip_file.read(), missing_images_data, missing_images_df, bundle_list_data
 
