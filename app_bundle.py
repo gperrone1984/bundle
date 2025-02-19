@@ -197,7 +197,10 @@ if st.button("🧹 Clear Cache and Reset Data"):
     st.session_state.clear()
     st.cache_data.clear()
     clear_old_data()
-    st.experimental_rerun()
+    try:
+        st.experimental_rerun()
+    except AttributeError:
+        st.warning("App rerun not supported in this version of Streamlit.")
 
 # Sidebar with app functionalities
 st.sidebar.header("🔹 What This App Does")
