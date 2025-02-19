@@ -35,7 +35,10 @@ if st.button("🧹 Clear Cache and Reset Data"):
     st.session_state.clear()
     st.cache_data.clear()
     clear_old_data()
-    st.experimental_rerun()
+    try:
+        st.experimental_rerun()
+    except st.runtime.scriptrunner.RerunException:
+        pass
 
 # Sidebar Information
 st.sidebar.header("🔹 What This App Does")
