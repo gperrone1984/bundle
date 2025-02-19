@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import os
 import requests
 import pandas as pd
@@ -197,10 +198,8 @@ if st.button("🧹 Clear Cache and Reset Data"):
     st.session_state.clear()
     st.cache_data.clear()
     clear_old_data()
-    try:
-        st.experimental_rerun()
-    except AttributeError:
-        st.warning("App rerun not supported in this version of Streamlit.")
+    # Force page reload with JavaScript injection
+    components.html("<script>window.location.reload();</script>", height=0)
 
 # Sidebar with app functionalities
 st.sidebar.header("🔹 What This App Does")
