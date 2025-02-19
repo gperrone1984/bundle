@@ -1,6 +1,3 @@
-#sembra funzionare, non c´é piú il tasto clear ma non sembra convervare i dati
-
-
 import streamlit as st
 import os
 import requests
@@ -29,7 +26,7 @@ st.sidebar.header("🔹 What This App Does")
 st.sidebar.markdown("""
 - ❓ This app automates the **creation of product bundles** by **downloading and organizing product images**
 - 📂 **Uploads a CSV file** containing bundle and product information.
-- 🌐 **Downloads images** for each product from a specified URL..
+- 🌐 **Downloads images** for each product from a specified URL.
 - 🔎 **Searches** first for the manufacturer image (p1), then the Fotobox image (p10).
 - 🗂 **Organizes images** into folders based on the type of bundle.
 - ✏️ **Renames images** for bundles double, triple etc. using the bundle code.
@@ -37,8 +34,14 @@ st.sidebar.markdown("""
 - ❌ **Identifies missing images** and show/logs them in a separate file.
 - 📥 **Generates a ZIP file** containing all retrieved images.
 - 📥 Generates a CSV file with a **list of Bundle** in the file.
-- 🔎 **Tool Preview and download product images:**Useful when p1 or p10 images are missing or when the p1 image is of poor quality.
+- 🔎 **Tool Preview and download product images:** Useful when p1 or p10 images are missing or when the p1 image is of poor quality.
 """)
+
+# Add a button to clear cache and reset session data
+if st.sidebar.button("🧹 Clear Cache and Reset"):
+    st.session_state.clear()
+    st.cache_data.clear()
+    st.experimental_rerun()
 
 # Product Image Preview Section (RESTORED)
 st.sidebar.header("🔎 Product Image Preview")
