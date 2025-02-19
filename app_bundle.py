@@ -21,6 +21,12 @@ To prepare the input file, follow these steps:
    - **Without Media**
 """)
 
+# Button to clear cache and reset session state
+if st.button("🧹 Clear Cache and Reset Data"):
+    st.session_state.clear()
+    st.cache_data.clear()
+    st.rerun()
+
 # Sidebar with app functionalities
 st.sidebar.header("🔹 What This App Does")
 st.sidebar.markdown("""
@@ -36,12 +42,6 @@ st.sidebar.markdown("""
 - 📥 Generates a CSV file with a **list of Bundle** in the file.
 - 🔎 **Tool Preview and download product images:** Useful when p1 or p10 images are missing or when the p1 image is of poor quality.
 """)
-
-# Add a button to clear cache and reset session data
-if st.sidebar.button("🧹 Clear Cache and Reset"):
-    st.session_state.clear()
-    st.cache_data.clear()
-    st.experimental_rerun()
 
 # Product Image Preview Section (RESTORED)
 st.sidebar.header("🔎 Product Image Preview")
