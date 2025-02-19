@@ -61,32 +61,23 @@ def trim_white_borders(img):
     return img
 
 # Function to process images for bundles of 2 (duplicate side by side)
-def create_double_bundle_image(product_code, bundle_code, folder_name):
-    image_data = download_image(product_code, "1") or download_image(product_code, "10")
+def create_double_bundle_image(img):
+    img = trim_white_borders(img)  # Remove white borders
     
-    if image_data:
-        img = Image.open(BytesIO(image_data)).convert("RGB")
-        img = trim_white_borders(img)  # Remove white borders
-        
-        # Create a new image (double width, same height)
-        new_width = img.width * 2
-        new_height = img.height
-        combined_img = Image.new("RGB", (new_width, new_height), (255, 255, 255))
-        combined_img.paste(img, (0, 0))
-        combined_img.paste(img, (img.width, 0))
-        
-        # Center in a 1000x1000 white canvas
-        final_img = Image.new("RGB", (1000, 1000), (255, 255, 255))
-        x_offset = (1000 - new_width) // 2
-        y_offset = (1000 - new_height) // 2
-        final_img.paste(combined_img, (x_offset, y_offset))
-        
-        # Save image
-        output_path = os.path.join(folder_name, f"{bundle_code}-h1.jpg")
-        final_img.save(output_path, "JPEG", quality=95)
-        return True
+    # Create a new image (double width, same height)
+    new_width = img.width * 2
+    new_height = img.height
+    combined_img = Image.new("RGB", (new_width, new_height), (255, 255, 255))
+    combined_img.paste(img, (0, 0))
+    combined_img.paste(img, (img.width, 0))
     
-    return False
+    # Center in a 1000x1000 white canvas
+    final_img = Image.new("RGB", (1000, 1000), (255, 255, 255))
+    x_offset = (1000 - new_width) // 2
+    y_offset = (1000 - new_height) // 2
+    final_img.paste(combined_img, (x_offset, y_offset))
+    
+    return final_img
 
 # Function to process the uploaded CSV file
 def process_file(uploaded_file):
@@ -115,12 +106,15 @@ def process_file(uploaded_file):
             folder_name = f"{base_folder}/bundle_2"
             os.makedirs(folder_name, exist_ok=True)
             product_code = product_codes[0]
-            success = create_double_bundle_image(product_code, bundle_code, folder_name)
-            if not success:
+            image_data = download_image(product_code, "1") or download_image(product_code, "10")
+            
+            if image_data:
+                img = Image.open(BytesIO(image_data)).convert("RGB")
+                final_img = create_double_bundle_image(img)
+                output_path = os.path.join(folder_name, f"{bundle_code}-h1.jpg")
+                final_img.save(output_path, "JPEG", quality=95)
+            else:
                 error_list.append((bundle_code, product_code))
-        
-        else:
-            continue  # Skip other bundles for now
     
     # Create missing images report
     missing_images_df = pd.DataFrame(error_list, columns=["PZN Bundle", "PZN with image missing"])
