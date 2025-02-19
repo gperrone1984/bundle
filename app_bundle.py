@@ -101,30 +101,39 @@ def trim(im):
 
 # Function to process double bundle image (for bundle_2)
 def process_double_bundle_image(image):
-    # Ritaglia il bordo bianco
     image = trim(image)
-    
-    # Ottieni le dimensioni
     width, height = image.size
-    
-    # Crea una nuova immagine affiancando due copie dell'immagine ritagliata
     merged_width = width * 2
     merged_height = height
     merged_image = Image.new("RGB", (merged_width, merged_height), (255, 255, 255))
     merged_image.paste(image, (0, 0))
     merged_image.paste(image, (width, 0))
-    
-    # Calcola il fattore di scala per adattare l'immagine in una tela 1000x1000 mantenendo le proporzioni
     scale_factor = min(1000 / merged_width, 1000 / merged_height)
     new_size = (int(merged_width * scale_factor), int(merged_height * scale_factor))
     resized_image = merged_image.resize(new_size, Image.LANCZOS)
-    
-    # Crea una tela 1000x1000 con sfondo bianco e centra l'immagine ridimensionata
     final_image = Image.new("RGB", (1000, 1000), (255, 255, 255))
     x_offset = (1000 - new_size[0]) // 2
     y_offset = (1000 - new_size[1]) // 2
     final_image.paste(resized_image, (x_offset, y_offset))
-    
+    return final_image
+
+# Function to process triple bundle image (for bundle_3)
+def process_triple_bundle_image(image):
+    image = trim(image)
+    width, height = image.size
+    merged_width = width * 3
+    merged_height = height
+    merged_image = Image.new("RGB", (merged_width, merged_height), (255, 255, 255))
+    merged_image.paste(image, (0, 0))
+    merged_image.paste(image, (width, 0))
+    merged_image.paste(image, (width * 2, 0))
+    scale_factor = min(1000 / merged_width, 1000 / merged_height)
+    new_size = (int(merged_width * scale_factor), int(merged_height * scale_factor))
+    resized_image = merged_image.resize(new_size, Image.LANCZOS)
+    final_image = Image.new("RGB", (1000, 1000), (255, 255, 255))
+    x_offset = (1000 - new_size[0]) // 2
+    y_offset = (1000 - new_size[1]) // 2
+    final_image.paste(resized_image, (x_offset, y_offset))
     return final_image
 
 # Function to process the uploaded CSV file
@@ -139,13 +148,13 @@ def process_file(uploaded_file):
         st.error(f"Missing required columns: {', '.join(missing_columns)}")
         return None, None, None, None
     
-    data = data[list(required_columns)]  # Keep only required columns
+    data = data[list(required_columns)]
     data.dropna(inplace=True)
     
     base_folder = "bundle_images"
     os.makedirs(base_folder, exist_ok=True)
     
-    mixed_sets_needed = False  # Flag to track if we need the mixed_sets folder
+    mixed_sets_needed = False  # Flag per eventuali bundle misti
     mixed_folder = os.path.join(base_folder, "mixed_sets")
     
     error_list = []  # Lista di tuple (bundle_code, product_code) per cui manca l'immagine
@@ -157,28 +166,29 @@ def process_file(uploaded_file):
         
         num_products = len(product_codes)
         bundle_type = f"bundle of {num_products}"
-        
-        bundle_list.append([bundle_code, ', '.join(product_codes), bundle_type])  # Aggiunge alla lista del bundle
+        bundle_list.append([bundle_code, ', '.join(product_codes), bundle_type])
 
         if len(set(product_codes)) == 1:  # Bundle uniforme
             folder_name = f"{base_folder}/bundle_{num_products}"
             os.makedirs(folder_name, exist_ok=True)
             product_code = product_codes[0]
-            image_data = download_image(product_code, "1")[0] or download_image(product_code, "10")[0]  # Prova p1, poi p10
+            image_data = download_image(product_code, "1")[0] or download_image(product_code, "10")[0]
             
             if image_data:
-                # Se il bundle contiene 2 immagini, esegue la modifica prima di salvare
-                if num_products == 2:
-                    try:
-                        img = Image.open(BytesIO(image_data))
+                try:
+                    img = Image.open(BytesIO(image_data))
+                    # Se il bundle contiene 2 prodotti, applica la trasformazione per bundle_2
+                    if num_products == 2:
                         final_img = process_double_bundle_image(img)
-                        final_img.save(os.path.join(folder_name, f"{bundle_code}-h1.jpg"), "JPEG", quality=95)
-                    except Exception as e:
-                        st.error(f"Error processing image for bundle {bundle_code}: {e}")
-                        error_list.append((bundle_code, product_code))
-                else:
-                    with open(os.path.join(folder_name, f"{bundle_code}-h1.jpg"), 'wb') as file:
-                        file.write(image_data)
+                    # Se il bundle contiene 3 prodotti, applica la trasformazione per bundle_3
+                    elif num_products == 3:
+                        final_img = process_triple_bundle_image(img)
+                    else:
+                        final_img = img  # Nessuna trasformazione per altri casi uniformi
+                    final_img.save(os.path.join(folder_name, f"{bundle_code}-h1.jpg"), "JPEG", quality=95)
+                except Exception as e:
+                    st.error(f"Error processing image for bundle {bundle_code}: {e}")
+                    error_list.append((bundle_code, product_code))
             else:
                 error_list.append((bundle_code, product_code))
         else:  # Bundle misto
@@ -187,18 +197,17 @@ def process_file(uploaded_file):
             os.makedirs(bundle_folder, exist_ok=True)
             for product_code in product_codes:
                 image_data = download_image(product_code, "1")[0] or download_image(product_code, "10")[0]
-                
                 if image_data:
                     with open(os.path.join(bundle_folder, f"{product_code}.jpg"), 'wb') as file:
                         file.write(image_data)
                 else:
                     error_list.append((bundle_code, product_code))
-
-    # Rimuove la cartella mixed_sets se non sono stati trovati bundle misti
+    
+    # Rimuove la cartella mixed_sets se non ci sono bundle misti
     if not mixed_sets_needed and os.path.exists(mixed_folder):
         shutil.rmtree(mixed_folder)
 
-    # Crea il report dei dati mancanti aggregando le PZN per bundle
+    # Aggrega le PZN mancanti per bundle in un'unica cella, separate da virgola
     if error_list:
         missing_images_df = pd.DataFrame(error_list, columns=["PZN Bundle", "PZN with image missing"])
         missing_images_df = missing_images_df.groupby("PZN Bundle", as_index=False).agg({
@@ -231,7 +240,7 @@ uploaded_file = st.file_uploader("Upload CSV File", type=["csv"])
 if uploaded_file:
     with st.spinner("Processing..."):
         zip_data, missing_images_data, missing_images_df, bundle_list_data = process_file(uploaded_file)
-
+    
     if zip_data:
         st.success("**Processing complete! Download your files below.**")
         
