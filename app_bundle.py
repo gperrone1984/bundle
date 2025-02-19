@@ -154,18 +154,22 @@ def process_file(uploaded_file):
     base_folder = "bundle_images"
     os.makedirs(base_folder, exist_ok=True)
     
-    mixed_sets_needed = False  # Flag per eventuali bundle misti
+    mixed_sets_needed = False  # Flag for eventual mixed bundles
     mixed_folder = os.path.join(base_folder, "mixed_sets")
     
-    error_list = []  # Lista di tuple (bundle_code, product_code) per cui manca l'immagine
-    bundle_list = []  # Lista per memorizzare i dettagli del bundle
+    error_list = []  # List of tuples (bundle_code, product_code) for which image is missing
+    bundle_list = []  # List to store bundle details
 
     for _, row in data.iterrows():
         bundle_code = row['sku'].strip()
         product_codes = [code.strip() for code in row['pzns_in_set'].strip().split(',')]
-        
         num_products = len(product_codes)
-        bundle_type = f"bundle of {num_products}"
+        
+        # Se tutti i pzns sono uguali, il bundle è uniforme, altrimenti è "mixed"
+        if len(set(product_codes)) == 1:
+            bundle_type = f"bundle of {num_products}"
+        else:
+            bundle_type = "mixed"
         bundle_list.append([bundle_code, ', '.join(product_codes), bundle_type])
 
         if len(set(product_codes)) == 1:  # Bundle uniforme
