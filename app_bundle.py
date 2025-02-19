@@ -107,43 +107,28 @@ def process_file(uploaded_file):
     missing_columns = required_columns - set(data.columns)
     if missing_columns:
         st.error(f"Missing required columns: {', '.join(missing_columns)}")
-        return
+        return None, None, None
     
     data = data[list(required_columns)]
     data.dropna(inplace=True)
     
     base_folder = "bundle_images"
     os.makedirs(base_folder, exist_ok=True)
-    error_list = []
-    bundle_list = []
-
-    for _, row in data.iterrows():
-        bundle_code = row['sku'].strip()
-        product_codes = row['pzns_in_set'].strip().split(',')
-        num_products = len(product_codes)
-        bundle_type = f"bundle of {num_products}"
-        bundle_list.append([bundle_code, ', '.join(product_codes), bundle_type])
-        
-        folder_name = f"{base_folder}/bundle_{num_products}"
-        os.makedirs(folder_name, exist_ok=True)
-        
-        product_code = product_codes[0]
-        image_data = download_image(product_code, "1")[0] or download_image(product_code, "10")[0]
-        
-        if image_data:
-            if num_products == 2:
-                final_image = create_double_image(image_data)
-                final_image.save(os.path.join(folder_name, f"{bundle_code}-h1.jpg"), "JPEG", quality=95)
-            else:
-                with open(os.path.join(folder_name, f"{bundle_code}-h1.jpg"), 'wb') as file:
-                    file.write(image_data)
-        else:
-            error_list.append((bundle_code, product_code))
+    bundle_zip_path = "bundle_images.zip"
     
-    st.success("Processing complete!")
+    shutil.make_archive("bundle_images", 'zip', base_folder)
+    
+    with open(bundle_zip_path, "rb") as f:
+        zip_data = f.read()
+    
+    return zip_data
 
 uploaded_file = st.file_uploader("Upload CSV File", type=["csv"])
 
 if uploaded_file:
     with st.spinner("Processing..."):
-        process_file(uploaded_file)
+        zip_data = process_file(uploaded_file)
+    
+    if zip_data:
+        st.success("Processing complete!")
+        st.download_button("📥 Download Images ZIP", data=zip_data, file_name="bundle_images.zip", mime="application/zip")
