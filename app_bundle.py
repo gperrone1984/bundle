@@ -136,7 +136,7 @@ def process_file(uploaded_file, progress_bar=None):
                 else:
                     error_list.append((bundle_code, product_code))
         
-        # Aggiorna la progress bar (se esiste)
+        # Aggiorna la progress bar solo nella sezione CSV processing
         if progress_bar is not None:
             progress_bar.progress((i + 1) / total)
     
@@ -184,14 +184,14 @@ To prepare the input file, follow these steps:
    - **Without Media**
 """)
 
-# Clear Cache Button: elimina stato, file e ricarica la pagina iniziale
+# Clear Cache Button: elimina lo stato, i file e ricarica la pagina iniziale
 if st.button("🧹 Clear Cache and Reset Data"):
     st.session_state.clear()
     st.cache_data.clear()
     clear_old_data()
     components.html("<script>window.location.href=window.location.origin+window.location.pathname;</script>", height=0)
 
-# Sidebar con descrizione delle funzionalità
+# Sidebar: Funzionalità dell'app
 st.sidebar.header("🔹 What This App Does")
 st.sidebar.markdown("""
 - Automates the creation of product bundles by downloading and organizing product images.
@@ -206,7 +206,7 @@ st.sidebar.markdown("""
 - Provides a tool to preview and download product images.
 """)
 
-# Product Image Preview Section with spinner next to the button
+# Product Image Preview Section (Sidebar)
 st.sidebar.header("🔎 Product Image Preview")
 product_code = st.sidebar.text_input("Enter Product Code:")
 selected_extension = st.sidebar.selectbox("Select Image Extension:", [str(i) for i in range(1, 19)])
@@ -216,6 +216,7 @@ with st.sidebar:
     spinner_placeholder = col_spinner.empty()
 
 if show_image and product_code:
+    # Nella preview si utilizza solo lo spinner, nessuna progress bar
     with spinner_placeholder:
         with st.spinner("Processing..."):
             image_data, image_url = download_image(product_code, selected_extension)
@@ -231,10 +232,10 @@ if show_image and product_code:
     else:
         st.sidebar.error(f"⚠️ No image found for {product_code} with -p{selected_extension}.jpg")
 
-# Main content container per file upload e processing
+# Main Content: File Upload & Processing (con progress bar)
 uploaded_file = st.file_uploader("Upload CSV File", type=["csv"], key="file_uploader")
 if uploaded_file:
-    progress_bar = st.progress(0)
+    progress_bar = st.progress(0)  # Progress bar visibile solo per il processing del CSV
     zip_data, missing_images_data, missing_images_df, bundle_list_data = process_file(uploaded_file, progress_bar)
     progress_bar.empty()
     if zip_data:
