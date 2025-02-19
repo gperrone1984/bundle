@@ -92,16 +92,22 @@ def process_file(uploaded_file):
         product_codes = row['pzns_in_set'].strip().split(',')
         num_products = len(product_codes)
         bundle_list.append([bundle_code, ', '.join(product_codes), f"bundle of {num_products}"])
-        if len(set(product_codes)) == 1 and num_products == 2:
-            folder_name = f"{base_folder}/bundle_2"
-            ensure_directory_exists(folder_name)
-            product_code = product_codes[0]
+        
+        if len(set(product_codes)) == 1:  # Uniform bundle
+            folder_name = f"{base_folder}/bundle_{num_products}"
+        else:  # Mixed bundle
+            folder_name = f"{base_folder}/mixed_sets/{bundle_code}"
+        
+        ensure_directory_exists(folder_name)
+        
+        for product_code in product_codes:
             image_data = download_image(product_code, "1") or download_image(product_code, "10")
             if image_data:
                 img = Image.open(BytesIO(image_data)).convert("RGB")
-                final_img = create_double_bundle_image(img)
+                if num_products == 2 and len(set(product_codes)) == 1:
+                    img = create_double_bundle_image(img)
                 output_path = os.path.join(folder_name, f"{bundle_code}-h1.jpg")
-                final_img.save(output_path, "JPEG", quality=95)
+                img.save(output_path, "JPEG", quality=95)
                 st.write(f"✅ Saved: {output_path}")
             else:
                 error_list.append((bundle_code, product_code))
