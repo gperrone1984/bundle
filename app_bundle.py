@@ -107,7 +107,7 @@ def process_file(uploaded_file):
     missing_columns = required_columns - set(data.columns)
     if missing_columns:
         st.error(f"Missing required columns: {', '.join(missing_columns)}")
-        return None, None, None, None
+        return
     
     data = data[list(required_columns)]
     data.dropna(inplace=True)
@@ -140,7 +140,7 @@ def process_file(uploaded_file):
         else:
             error_list.append((bundle_code, product_code))
     
-    return None  # Adjust return values if needed
+    st.success("Processing complete!")
 
 uploaded_file = st.file_uploader("Upload CSV File", type=["csv"])
 
