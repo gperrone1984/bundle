@@ -71,32 +71,40 @@ def clear_old_data():
     if os.path.exists("bundle_list.csv"):
         os.remove("bundle_list.csv")
 
-def process_file(uploaded_file):
+def process_file(uploaded_file, progress_bar=None):
     uploaded_file.seek(0)
     data = pd.read_csv(uploaded_file, delimiter=';', dtype=str)
+    
     required_columns = {'sku', 'pzns_in_set'}
     missing_columns = required_columns - set(data.columns)
     if missing_columns:
         st.error(f"Missing required columns: {', '.join(missing_columns)}")
         return None, None, None, None
+    
     data = data[list(required_columns)]
     data.dropna(inplace=True)
+    
     base_folder = "bundle_images"
     os.makedirs(base_folder, exist_ok=True)
+    
     mixed_sets_needed = False
     mixed_folder = os.path.join(base_folder, "mixed_sets")
-    error_list = []
-    bundle_list = []
-    for _, row in data.iterrows():
+    error_list = []      # Lista di tuple (bundle_code, product_code) per cui manca l'immagine
+    bundle_list = []     # Lista per memorizzare i dettagli del bundle
+    
+    total = len(data)
+    for i, (_, row) in enumerate(data.iterrows()):
         bundle_code = row['sku'].strip()
         product_codes = [code.strip() for code in row['pzns_in_set'].strip().split(',')]
         num_products = len(product_codes)
+        
         if len(set(product_codes)) == 1:
             bundle_type = f"bundle of {num_products}"
         else:
             bundle_type = "mixed"
         bundle_list.append([bundle_code, ', '.join(product_codes), bundle_type])
-        if len(set(product_codes)) == 1:
+        
+        if len(set(product_codes)) == 1:  # Bundle uniforme
             folder_name = f"{base_folder}/bundle_{num_products}"
             os.makedirs(folder_name, exist_ok=True)
             product_code = product_codes[0]
@@ -116,7 +124,7 @@ def process_file(uploaded_file):
                     error_list.append((bundle_code, product_code))
             else:
                 error_list.append((bundle_code, product_code))
-        else:
+        else:  # Bundle misto
             mixed_sets_needed = True
             bundle_folder = os.path.join(mixed_folder, bundle_code)
             os.makedirs(bundle_folder, exist_ok=True)
@@ -127,8 +135,14 @@ def process_file(uploaded_file):
                         file.write(image_data)
                 else:
                     error_list.append((bundle_code, product_code))
+        
+        # Aggiorna la progress bar (se esiste)
+        if progress_bar is not None:
+            progress_bar.progress((i + 1) / total)
+    
     if not mixed_sets_needed and os.path.exists(mixed_folder):
         shutil.rmtree(mixed_folder)
+    
     if error_list:
         missing_images_df = pd.DataFrame(error_list, columns=["PZN Bundle", "PZN with image missing"])
         missing_images_df = missing_images_df.groupby("PZN Bundle", as_index=False).agg({
@@ -136,15 +150,18 @@ def process_file(uploaded_file):
         })
     else:
         missing_images_df = pd.DataFrame(columns=["PZN Bundle", "PZN with image missing"])
+    
     missing_images_csv = "missing_images.csv"
     missing_images_df.to_csv(missing_images_csv, index=False, sep=';')
     with open(missing_images_csv, "rb") as f:
         missing_images_data = f.read()
+    
     bundle_list_df = pd.DataFrame(bundle_list, columns=["sku", "pzns_in_set", "bundle type"])
     bundle_list_csv = "bundle_list.csv"
     bundle_list_df.to_csv(bundle_list_csv, index=False, sep=';')
     with open(bundle_list_csv, "rb") as f:
         bundle_list_data = f.read()
+    
     zip_path = "bundle_images.zip"
     shutil.make_archive("bundle_images_temp", 'zip', base_folder)
     os.rename("bundle_images_temp.zip", zip_path)
@@ -167,14 +184,14 @@ To prepare the input file, follow these steps:
    - **Without Media**
 """)
 
-# Clear Cache Button: questa operazione elimina tutto e ricarica la pagina iniziale
+# Clear Cache Button: elimina stato, file e ricarica la pagina iniziale
 if st.button("🧹 Clear Cache and Reset Data"):
     st.session_state.clear()
     st.cache_data.clear()
     clear_old_data()
     components.html("<script>window.location.href=window.location.origin+window.location.pathname;</script>", height=0)
 
-# Sidebar with functionalities
+# Sidebar con descrizione delle funzionalità
 st.sidebar.header("🔹 What This App Does")
 st.sidebar.markdown("""
 - Automates the creation of product bundles by downloading and organizing product images.
@@ -189,7 +206,7 @@ st.sidebar.markdown("""
 - Provides a tool to preview and download product images.
 """)
 
-# Product Image Preview Section with spinner
+# Product Image Preview Section with spinner next to the button
 st.sidebar.header("🔎 Product Image Preview")
 product_code = st.sidebar.text_input("Enter Product Code:")
 selected_extension = st.sidebar.selectbox("Select Image Extension:", [str(i) for i in range(1, 19)])
@@ -214,11 +231,12 @@ if show_image and product_code:
     else:
         st.sidebar.error(f"⚠️ No image found for {product_code} with -p{selected_extension}.jpg")
 
-# Main content container per upload e processing
+# Main content container per file upload e processing
 uploaded_file = st.file_uploader("Upload CSV File", type=["csv"], key="file_uploader")
 if uploaded_file:
-    with st.spinner("Processing..."):
-        zip_data, missing_images_data, missing_images_df, bundle_list_data = process_file(uploaded_file)
+    progress_bar = st.progress(0)
+    zip_data, missing_images_data, missing_images_df, bundle_list_data = process_file(uploaded_file, progress_bar)
+    progress_bar.empty()
     if zip_data:
         st.success("**Processing complete! Download your files below.**")
         st.download_button(label="📥 **Download Images for Bundle Creation**", data=zip_data, file_name="bundle_images.zip", mime="application/zip")
