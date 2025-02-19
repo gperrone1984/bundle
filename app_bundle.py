@@ -37,25 +37,11 @@ st.sidebar.markdown("""
 - 🔎 **Tool Preview and download product images:** Useful when p1 or p10 images are missing or when the p1 image is of poor quality.
 """)
 
-# Function to delete the previous bundle_images folder
-def clear_old_data():
-    if os.path.exists("bundle_images"):
-        shutil.rmtree("bundle_images")
-    if os.path.exists("bundle_images.zip"):
-        os.remove("bundle_images.zip")
-    if os.path.exists("missing_images.csv"):
-        os.remove("missing_images.csv")
-    if os.path.exists("bundle_list.csv"):
-        os.remove("bundle_list.csv")
+# Product Image Preview Section
+st.sidebar.header("🔎 Product Image Preview")
+product_code = st.sidebar.text_input("Enter Product Code:")
+selected_extension = st.sidebar.selectbox("Select Image Extension:", [str(i) for i in range(1, 19)])
 
-# Button to clear cache and delete old files
-if st.button("🧹 Clear Cache and Reset Data"):
-    st.session_state.clear()
-    st.cache_data.clear()
-    clear_old_data()
-    st.rerun()
-
-# Function to download an image
 def download_image(product_code, extension):
     if product_code.startswith(('1', '0')):
         product_code = f"D{product_code}"
@@ -66,6 +52,22 @@ def download_image(product_code, extension):
     if response.status_code == 200:
         return response.content, url
     return None, None
+
+if st.sidebar.button("Show Image") and product_code:
+    image_data, image_url = download_image(product_code, selected_extension)
+    
+    if image_data:
+        image = Image.open(BytesIO(image_data))
+        st.sidebar.image(image, caption=f"Product: {product_code} (p{selected_extension})", use_container_width=True)
+        
+        st.sidebar.download_button(
+            label="📥 Download Image",
+            data=image_data,
+            file_name=f"{product_code}-p{selected_extension}.jpg",
+            mime="image/jpeg"
+        )
+    else:
+        st.sidebar.error(f"⚠️ No image found for {product_code} with -p{selected_extension}.jpg")
 
 # Function to trim white borders
 def trim(im):
@@ -92,41 +94,23 @@ def process_file(uploaded_file):
     
     base_folder = "bundle_images"
     os.makedirs(base_folder, exist_ok=True)
+    mixed_folder = os.path.join(base_folder, "mixed_sets")
+    os.makedirs(mixed_folder, exist_ok=True)
     
     error_list = []
     for _, row in data.iterrows():
         bundle_code = row['sku'].strip()
         product_codes = row['pzns_in_set'].strip().split(',')
         
-        if len(set(product_codes)) == 1 and len(product_codes) == 2:
-            folder_name = f"{base_folder}/bundle_2"
-            os.makedirs(folder_name, exist_ok=True)
-            product_code = product_codes[0]
+        folder_name = os.path.join(base_folder, bundle_code)
+        os.makedirs(folder_name, exist_ok=True)
+        
+        for product_code in product_codes:
             image_data = download_image(product_code, "1")[0] or download_image(product_code, "10")[0]
             
             if image_data:
-                image_path = os.path.join(folder_name, f"{bundle_code}-h1.jpg")
-                with open(image_path, 'wb') as file:
+                with open(os.path.join(folder_name, f"{product_code}.jpg"), 'wb') as file:
                     file.write(image_data)
-                
-                image = Image.open(image_path)
-                image = trim(image)
-                width, height = image.size
-                
-                merged_image = Image.new("RGB", (width * 2, height), (255, 255, 255))
-                merged_image.paste(image, (0, 0))
-                merged_image.paste(image, (width, 0))
-                
-                scale_factor = min(1000 / (width * 2), 1000 / height)
-                new_size = (int((width * 2) * scale_factor), int(height * scale_factor))
-                resized_image = merged_image.resize(new_size, Image.LANCZOS)
-                
-                final_image = Image.new("RGB", (1000, 1000), (255, 255, 255))
-                x_offset = (1000 - new_size[0]) // 2
-                y_offset = (1000 - new_size[1]) // 2
-                final_image.paste(resized_image, (x_offset, y_offset))
-                
-                final_image.save(image_path, "JPEG", quality=95)
             else:
                 error_list.append((bundle_code, product_code))
     
