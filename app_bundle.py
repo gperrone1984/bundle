@@ -65,26 +65,21 @@ def create_double_bundle_image(product_code, bundle_code, folder_name):
     image_data = download_image(product_code, "1") or download_image(product_code, "10")
     
     if image_data:
-        img = Image.open(BytesIO(image_data)).convert("RGBA")
+        img = Image.open(BytesIO(image_data)).convert("RGB")
         img = trim_white_borders(img)  # Remove white borders
         
         # Create a new image (double width, same height)
         new_width = img.width * 2
         new_height = img.height
-        combined_img = Image.new("RGBA", (new_width, new_height), (255, 255, 255, 0))
+        combined_img = Image.new("RGB", (new_width, new_height), (255, 255, 255))
         combined_img.paste(img, (0, 0))
         combined_img.paste(img, (img.width, 0))
         
-        # Resize proportionally if necessary
-        max_size = 800
-        if new_width > max_size or new_height > max_size:
-            combined_img.thumbnail((max_size, max_size))
-        
         # Center in a 1000x1000 white canvas
         final_img = Image.new("RGB", (1000, 1000), (255, 255, 255))
-        x_offset = (1000 - combined_img.width) // 2
-        y_offset = (1000 - combined_img.height) // 2
-        final_img.paste(combined_img, (x_offset, y_offset), combined_img)
+        x_offset = (1000 - new_width) // 2
+        y_offset = (1000 - new_height) // 2
+        final_img.paste(combined_img, (x_offset, y_offset))
         
         # Save image
         output_path = os.path.join(folder_name, f"{bundle_code}-h1.jpg")
