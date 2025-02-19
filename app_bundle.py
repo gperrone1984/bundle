@@ -21,6 +21,21 @@ To prepare the input file, follow these steps:
    - **Without Media**
 """)
 
+# Sidebar with app functionalities
+st.sidebar.header("🔹 What This App Does")
+st.sidebar.markdown("""
+- ❓ This app automates the **creation of product bundles** by **downloading and organizing product images**
+- 📂 **Uploads a CSV file** containing bundle and product information.
+- 🌐 **Downloads images** for each product from a specified URL.
+- 🔎 **Searches** first for the manufacturer image (p1), then the Fotobox image (p10).
+- 🗂 **Organizes images** into folders based on the type of bundle.
+- ✏️ **Renames images** for bundles double, triple etc. using the bundle code.
+- 📁 **Sorts mixed-set images** into separate folders named after the bundle code.
+- ❌ **Identifies missing images** and show/logs them in a separate file.
+- 📥 **Generates a ZIP file** containing all retrieved images.
+- 📥 Generates a CSV file with a **list of Bundle** in the file.
+""")
+
 # Function to delete the previous bundle_images folder
 def clear_old_data():
     if os.path.exists("bundle_images"):
@@ -116,36 +131,12 @@ def process_file(uploaded_file):
             else:
                 error_list.append((bundle_code, product_code))
     
-    # Create missing images report
-    missing_images_df = pd.DataFrame(error_list, columns=["PZN Bundle", "PZN with image missing"])
-    missing_images_csv = "missing_images.csv"
-    missing_images_df.to_csv(missing_images_csv, index=False, sep=';')
-    
-    with open(missing_images_csv, "rb") as f:
-        missing_images_data = f.read()
-    
-    # Create bundle list CSV
-    bundle_list_df = pd.DataFrame(bundle_list, columns=["sku", "pzns_in_set", "bundle type"])
-    bundle_list_csv = "bundle_list.csv"
-    bundle_list_df.to_csv(bundle_list_csv, index=False, sep=';')
-    
-    with open(bundle_list_csv, "rb") as f:
-        bundle_list_data = f.read()
-    
-    # Create ZIP file of images
-    zip_path = "bundle_images.zip"
-    shutil.make_archive("bundle_images_temp", 'zip', base_folder)
-    os.rename("bundle_images_temp.zip", zip_path)
-    
-    with open(zip_path, "rb") as zip_file:
-        return zip_file.read(), missing_images_data, missing_images_df, bundle_list_data
+    return None
 
 uploaded_file = st.file_uploader("Upload CSV File", type=["csv"])
 
 if uploaded_file:
     with st.spinner("Processing..."):
-        zip_data, missing_images_data, missing_images_df, bundle_list_data = process_file(uploaded_file)
+        process_file(uploaded_file)
     
-    if zip_data:
-        st.success("**Processing complete! Download your files below.**")
-        st.download_button("📥 **Download Images**", data=zip_data, file_name="bundle_images.zip", mime="application/zip")
+    st.success("**Processing complete! Check the output folder.**")
