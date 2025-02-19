@@ -55,32 +55,24 @@ st.sidebar.markdown("""
 - 🔎 **Tool Preview and download product images:** Useful when p1 or p10 images are missing or when the p1 image is of poor quality.
 """)
 
-# Product Image Preview Section
+# Product Image Preview Section con spinner posizionato accanto al tasto
 st.sidebar.header("🔎 Product Image Preview")
 product_code = st.sidebar.text_input("Enter Product Code:")
 selected_extension = st.sidebar.selectbox("Select Image Extension:", [str(i) for i in range(1, 19)])
 
-# Function to download an image for preview
-def download_image(product_code, extension):
-    if product_code.startswith(('1', '0')):
-        product_code = f"D{product_code}"
-    
-    url = f"https://cdn.shop-apotheke.com/images/{product_code}-p{extension}.jpg"
-    response = requests.get(url, stream=True)
-    
-    if response.status_code == 200:
-        return response.content, url
-    return None, None
+# Creiamo due colonne nella sidebar per posizionare il pulsante e lo spinner affiancati
+with st.sidebar:
+    col_button, col_spinner = st.columns([2, 1])
+    show_image = col_button.button("Show Image")
+    spinner_placeholder = col_spinner.empty()
 
-# Display image preview
-if st.sidebar.button("Show Image") and product_code:
-    image_data, image_url = download_image(product_code, selected_extension)
-    
+if show_image and product_code:
+    with spinner_placeholder:
+        with st.spinner("Processing..."):
+            image_data, image_url = download_image(product_code, selected_extension)
     if image_data:
         image = Image.open(BytesIO(image_data))
         st.sidebar.image(image, caption=f"Product: {product_code} (p{selected_extension})", use_container_width=True)
-        
-        # Download button for the image
         st.sidebar.download_button(
             label="📥 Download Image",
             data=image_data,
@@ -89,6 +81,16 @@ if st.sidebar.button("Show Image") and product_code:
         )
     else:
         st.sidebar.error(f"⚠️ No image found for {product_code} with -p{selected_extension}.jpg")
+
+# Function to download an image (usata anche in altre sezioni)
+def download_image(product_code, extension):
+    if product_code.startswith(('1', '0')):
+        product_code = f"D{product_code}"
+    url = f"https://cdn.shop-apotheke.com/images/{product_code}-p{extension}.jpg"
+    response = requests.get(url, stream=True)
+    if response.status_code == 200:
+        return response.content, url
+    return None, None
 
 # Function to trim white border from an image
 def trim(im):
