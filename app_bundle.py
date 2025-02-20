@@ -253,14 +253,16 @@ if show_image and product_code:
 # Main Content: File Upload & Processing (with progress bar)
 uploaded_file = st.file_uploader("Upload CSV File", type=["csv"], key="file_uploader")
 if uploaded_file:
-    progress_bar = st.progress(0)
-    zip_data, missing_images_data, missing_images_df, bundle_list_data = process_file(uploaded_file, progress_bar)
-    progress_bar.empty()
-    if zip_data:
-        st.success("**Processing complete! Download your files below.**")
-        st.download_button(label="📥 Download Images for Bundle Creation", data=zip_data, file_name=f"bundle_images_{session_id}.zip", mime="application/zip")
-        st.download_button(label="📥 Download Bundle List", data=bundle_list_data, file_name="bundle_list.csv", mime="text/csv")
-        if missing_images_df is not None and not missing_images_df.empty:
-            st.warning("**Some images were not found:**")
-            st.dataframe(missing_images_df.reset_index(drop=True))
-            st.download_button(label="📥 Download Missing Images CSV", data=missing_images_data, file_name="missing_images.csv", mime="text/csv")
+    # Aggiungiamo un pulsante separato per processare il CSV in modo da separare questo processo dalla preview delle immagini.
+    if st.button("Process CSV"):
+        progress_bar = st.progress(0)
+        zip_data, missing_images_data, missing_images_df, bundle_list_data = process_file(uploaded_file, progress_bar)
+        progress_bar.empty()
+        if zip_data:
+            st.success("**Processing complete! Download your files below.**")
+            st.download_button(label="📥 Download Images for Bundle Creation", data=zip_data, file_name=f"bundle_images_{session_id}.zip", mime="application/zip")
+            st.download_button(label="📥 Download Bundle List", data=bundle_list_data, file_name="bundle_list.csv", mime="text/csv")
+            if missing_images_df is not None and not missing_images_df.empty:
+                st.warning("**Some images were not found:**")
+                st.dataframe(missing_images_df.reset_index(drop=True))
+                st.download_button(label="📥 Download Missing Images CSV", data=missing_images_data, file_name="missing_images.csv", mime="text/csv")
