@@ -11,7 +11,6 @@ from PIL import Image, ImageChops
 # ----- Create a unique session ID and corresponding base folder for the session -----
 if "session_id" not in st.session_state:
     st.session_state["session_id"] = str(uuid.uuid4())
-
 session_id = st.session_state["session_id"]
 base_folder = f"bundle_images_{session_id}"
 
@@ -19,9 +18,9 @@ base_folder = f"bundle_images_{session_id}"
 def clear_old_data():
     if os.path.exists(base_folder):
         shutil.rmtree(base_folder)
-    if os.path.exists("bundle_images_temp.zip"):
-        os.remove("bundle_images_temp.zip")
-    # Se esiste un file zip precedente per questa sessione, lo rimuovo
+    temp_zip = "bundle_images_temp.zip"
+    if os.path.exists(temp_zip):
+        os.remove(temp_zip)
     zip_path = f"bundle_images_{session_id}.zip"
     if os.path.exists(zip_path):
         os.remove(zip_path)
@@ -86,8 +85,11 @@ def process_triple_bundle_image(image):
     final_image.paste(resized_image, (x_offset, y_offset))
     return final_image
 
-def process_file(uploaded_file, progress_bar=None):
-    uploaded_file.seek(0)
+# This function is cached so that the file processing is done only once per unique file
+@st.cache_data(show_spinner=True)
+def process_file_cached(file_bytes, session_id):
+    # file_bytes: contents of the uploaded file
+    uploaded_file = BytesIO(file_bytes)
     data = pd.read_csv(uploaded_file, delimiter=';', dtype=str)
     
     required_columns = {'sku', 'pzns_in_set'}
@@ -103,15 +105,15 @@ def process_file(uploaded_file, progress_bar=None):
     data = data[list(required_columns)]
     data.dropna(inplace=True)
     
-    # Display number of bundles found.
+    # Instead of showing total rows, show the number of bundles
     st.write(f"File loaded: {len(data)} bundles found.")
     
     os.makedirs(base_folder, exist_ok=True)
     
     mixed_sets_needed = False
     mixed_folder = os.path.join(base_folder, "mixed_sets")
-    error_list = []      
-    bundle_list = []     
+    error_list = []      # List of tuples (bundle_code, product_code) for missing images
+    bundle_list = []     # List for bundle details
     
     total = len(data)
     for i, (_, row) in enumerate(data.iterrows()):
@@ -156,9 +158,6 @@ def process_file(uploaded_file, progress_bar=None):
                         file.write(image_data)
                 else:
                     error_list.append((bundle_code, product_code))
-        
-        if progress_bar is not None:
-            progress_bar.progress((i + 1) / total)
     
     if not mixed_sets_needed and os.path.exists(mixed_folder):
         shutil.rmtree(mixed_folder)
@@ -208,7 +207,6 @@ st.markdown("""
 if st.button("🧹 Clear Cache and Reset Data"):
     st.session_state.clear()
     st.cache_data.clear()
-    # Pulisco anche la cartella specifica della sessione
     clear_old_data()
     components.html("<script>window.location.href=window.location.origin+window.location.pathname;</script>", height=0)
 
@@ -252,17 +250,5 @@ if show_image and product_code:
     else:
         st.sidebar.error(f"⚠️ No image found for {product_code} with -p{selected_extension}.jpg")
 
-# Main Content: File Upload & Processing (with progress bar)
-uploaded_file = st.file_uploader("Upload CSV File", type=["csv"], key="file_uploader")
-if uploaded_file:
-    progress_bar = st.progress(0)
-    zip_data, missing_images_data, missing_images_df, bundle_list_data = process_file(uploaded_file, progress_bar)
-    progress_bar.empty()
-    if zip_data:
-        st.success("**Processing complete! Download your files below.**")
-        st.download_button(label="📥 Download Images for Bundle Creation", data=zip_data, file_name=f"bundle_images_{session_id}.zip", mime="application/zip")
-        st.download_button(label="📥 Download Bundle List", data=bundle_list_data, file_name="bundle_list.csv", mime="text/csv")
-        if missing_images_df is not None and not missing_images_df.empty:
-            st.warning("**Some images were not found:**")
-            st.dataframe(missing_images_df.reset_index(drop=True))
-            st.download_button(label="📥 Download Missing Images CSV", data=missing_images_data, file_name="missing_images.csv", mime="text/csv")
+# Main Content: File Upload & Processing
+uploaded_file = st.file_uploader("Upload CSV File", type=["cs
