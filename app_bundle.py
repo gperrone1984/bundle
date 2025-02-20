@@ -7,7 +7,7 @@ import shutil
 from io import BytesIO
 from PIL import Image, ImageChops
 
-# ----- Pulizia automatica all'avvio dell'app: rimuove file e cartelle salvate in precedenza -----
+# ----- Automatic cleaning at app start: remove previously saved files -----
 def clear_old_data():
     if os.path.exists("bundle_images"):
         shutil.rmtree("bundle_images")
@@ -18,7 +18,7 @@ def clear_old_data():
     if os.path.exists("bundle_list.csv"):
         os.remove("bundle_list.csv")
 
-clear_old_data()  # Viene eseguito ogni volta che l'app parte
+clear_old_data()
 
 # ---------------------- Function Definitions ----------------------
 
@@ -91,15 +91,16 @@ def process_file(uploaded_file, progress_bar=None):
     data = data[list(required_columns)]
     data.dropna(inplace=True)
     
-    st.write(f"File caricato: {len(data)} righe trovate.")
+    # Translate message: "File loaded: x rows found."
+    st.write(f"File loaded: {len(data)} rows found.")
     
     base_folder = "bundle_images"
     os.makedirs(base_folder, exist_ok=True)
     
     mixed_sets_needed = False
     mixed_folder = os.path.join(base_folder, "mixed_sets")
-    error_list = []      
-    bundle_list = []     
+    error_list = []      # List of tuples (bundle_code, product_code) for missing images
+    bundle_list = []     # List for bundle details
     
     total = len(data)
     for i, (_, row) in enumerate(data.iterrows()):
@@ -113,7 +114,7 @@ def process_file(uploaded_file, progress_bar=None):
             bundle_type = "mixed"
         bundle_list.append([bundle_code, ', '.join(product_codes), bundle_type])
         
-        if len(set(product_codes)) == 1:
+        if len(set(product_codes)) == 1:  # Uniform bundle
             folder_name = f"{base_folder}/bundle_{num_products}"
             os.makedirs(folder_name, exist_ok=True)
             product_code = product_codes[0]
@@ -133,7 +134,7 @@ def process_file(uploaded_file, progress_bar=None):
                     error_list.append((bundle_code, product_code))
             else:
                 error_list.append((bundle_code, product_code))
-        else:
+        else:  # Mixed bundle
             mixed_sets_needed = True
             bundle_folder = os.path.join(mixed_folder, bundle_code)
             os.makedirs(bundle_folder, exist_ok=True)
@@ -191,7 +192,7 @@ st.markdown("""
    - **Without Media**
 """)
 
-# Clear Cache Button: elimina stato, file e ricarica la pagina iniziale
+# Clear Cache Button: clears session state, files and reloads the initial page
 if st.button("🧹 Clear Cache and Reset Data"):
     st.session_state.clear()
     st.cache_data.clear()
@@ -238,10 +239,9 @@ if show_image and product_code:
     else:
         st.sidebar.error(f"⚠️ No image found for {product_code} with -p{selected_extension}.jpg")
 
-# Main Content: File Upload & Processing (con progress bar)
+# Main Content: File Upload & Processing (with progress bar)
 uploaded_file = st.file_uploader("Upload CSV File", type=["csv"], key="file_uploader")
 if uploaded_file:
-    st.write("File caricato. Inizio elaborazione...")
     progress_bar = st.progress(0)
     zip_data, missing_images_data, missing_images_df, bundle_list_data = process_file(uploaded_file, progress_bar)
     progress_bar.empty()
