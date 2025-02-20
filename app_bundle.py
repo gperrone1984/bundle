@@ -21,8 +21,10 @@ def clear_old_data():
         shutil.rmtree(base_folder)
     if os.path.exists("bundle_images_temp.zip"):
         os.remove("bundle_images_temp.zip")
-    if os.path.exists("bundle_images.zip"):
-        os.remove("bundle_images.zip")
+    # Se esiste un file zip precedente per questa sessione, lo rimuovo
+    zip_path = f"bundle_images_{session_id}.zip"
+    if os.path.exists(zip_path):
+        os.remove(zip_path)
     if os.path.exists("missing_images.csv"):
         os.remove("missing_images.csv")
     if os.path.exists("bundle_list.csv"):
@@ -101,15 +103,15 @@ def process_file(uploaded_file, progress_bar=None):
     data = data[list(required_columns)]
     data.dropna(inplace=True)
     
-    # Instead of showing total rows, show the number of bundles (each row = one bundle)
+    # Display number of bundles found.
     st.write(f"File loaded: {len(data)} bundles found.")
     
     os.makedirs(base_folder, exist_ok=True)
     
     mixed_sets_needed = False
     mixed_folder = os.path.join(base_folder, "mixed_sets")
-    error_list = []      # List of tuples (bundle_code, product_code) for missing images
-    bundle_list = []     # List for bundle details
+    error_list = []      
+    bundle_list = []     
     
     total = len(data)
     for i, (_, row) in enumerate(data.iterrows()):
@@ -180,7 +182,8 @@ def process_file(uploaded_file, progress_bar=None):
     with open(bundle_list_csv, "rb") as f:
         bundle_list_data = f.read()
     
-    zip_path = "bundle_images.zip"
+    # Create ZIP file with a unique name containing the session_id
+    zip_path = f"bundle_images_{session_id}.zip"
     shutil.make_archive("bundle_images_temp", 'zip', base_folder)
     os.rename("bundle_images_temp.zip", zip_path)
     with open(zip_path, "rb") as zip_file:
@@ -205,6 +208,7 @@ st.markdown("""
 if st.button("🧹 Clear Cache and Reset Data"):
     st.session_state.clear()
     st.cache_data.clear()
+    # Pulisco anche la cartella specifica della sessione
     clear_old_data()
     components.html("<script>window.location.href=window.location.origin+window.location.pathname;</script>", height=0)
 
@@ -256,7 +260,7 @@ if uploaded_file:
     progress_bar.empty()
     if zip_data:
         st.success("**Processing complete! Download your files below.**")
-        st.download_button(label="📥 Download Images for Bundle Creation", data=zip_data, file_name="bundle_images.zip", mime="application/zip")
+        st.download_button(label="📥 Download Images for Bundle Creation", data=zip_data, file_name=f"bundle_images_{session_id}.zip", mime="application/zip")
         st.download_button(label="📥 Download Bundle List", data=bundle_list_data, file_name="bundle_list.csv", mime="text/csv")
         if missing_images_df is not None and not missing_images_df.empty:
             st.warning("**Some images were not found:**")
