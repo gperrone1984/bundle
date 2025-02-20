@@ -7,6 +7,9 @@ import shutil
 from io import BytesIO
 from PIL import Image, ImageChops
 
+# ----- Pulizia automatica dello stato all'avvio dell'app -----
+st.session_state.clear()
+
 # ---------------------- Function Definitions ----------------------
 
 def download_image(product_code, extension):
@@ -136,7 +139,6 @@ def process_file(uploaded_file, progress_bar=None):
                 else:
                     error_list.append((bundle_code, product_code))
         
-        # Aggiorna la progress bar solo nella sezione CSV processing
         if progress_bar is not None:
             progress_bar.progress((i + 1) / total)
     
@@ -216,7 +218,6 @@ with st.sidebar:
     spinner_placeholder = col_spinner.empty()
 
 if show_image and product_code:
-    # Nella preview si utilizza solo lo spinner, nessuna progress bar
     with spinner_placeholder:
         with st.spinner("Processing..."):
             image_data, image_url = download_image(product_code, selected_extension)
@@ -235,7 +236,7 @@ if show_image and product_code:
 # Main Content: File Upload & Processing (con progress bar)
 uploaded_file = st.file_uploader("Upload CSV File", type=["csv"], key="file_uploader")
 if uploaded_file:
-    progress_bar = st.progress(0)  # Progress bar visibile solo per il processing del CSV
+    progress_bar = st.progress(0)
     zip_data, missing_images_data, missing_images_df, bundle_list_data = process_file(uploaded_file, progress_bar)
     progress_bar.empty()
     if zip_data:
