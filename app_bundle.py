@@ -4,13 +4,23 @@ import os
 import requests
 import pandas as pd
 import shutil
+import uuid
 from io import BytesIO
 from PIL import Image, ImageChops
 
-# ----- Automatic cleaning at app start: remove previously saved files -----
+# ----- Create a unique session ID and corresponding base folder for the session -----
+if "session_id" not in st.session_state:
+    st.session_state["session_id"] = str(uuid.uuid4())
+
+session_id = st.session_state["session_id"]
+base_folder = f"bundle_images_{session_id}"
+
+# ----- Automatic cleaning at app start: remove previous files in the session folder -----
 def clear_old_data():
-    if os.path.exists("bundle_images"):
-        shutil.rmtree("bundle_images")
+    if os.path.exists(base_folder):
+        shutil.rmtree(base_folder)
+    if os.path.exists("bundle_images_temp.zip"):
+        os.remove("bundle_images_temp.zip")
     if os.path.exists("bundle_images.zip"):
         os.remove("bundle_images.zip")
     if os.path.exists("missing_images.csv"):
@@ -18,7 +28,7 @@ def clear_old_data():
     if os.path.exists("bundle_list.csv"):
         os.remove("bundle_list.csv")
 
-clear_old_data()
+clear_old_data()  # Clean session-specific files at startup
 
 # ---------------------- Function Definitions ----------------------
 
@@ -91,10 +101,9 @@ def process_file(uploaded_file, progress_bar=None):
     data = data[list(required_columns)]
     data.dropna(inplace=True)
     
-    # Translate message: "File loaded: x rows found."
+    # Instead of showing total rows, show the number of bundles (each row = one bundle)
     st.write(f"File loaded: {len(data)} bundles found.")
     
-    base_folder = "bundle_images"
     os.makedirs(base_folder, exist_ok=True)
     
     mixed_sets_needed = False
