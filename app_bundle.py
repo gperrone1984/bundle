@@ -85,11 +85,8 @@ def process_triple_bundle_image(image):
     final_image.paste(resized_image, (x_offset, y_offset))
     return final_image
 
-# This function is cached so that the file processing is done only once per unique file
-@st.cache_data(show_spinner=True)
-def process_file_cached(file_bytes, session_id):
-    # file_bytes: contents of the uploaded file
-    uploaded_file = BytesIO(file_bytes)
+def process_file(uploaded_file, progress_bar=None):
+    uploaded_file.seek(0)
     data = pd.read_csv(uploaded_file, delimiter=';', dtype=str)
     
     required_columns = {'sku', 'pzns_in_set'}
@@ -105,7 +102,7 @@ def process_file_cached(file_bytes, session_id):
     data = data[list(required_columns)]
     data.dropna(inplace=True)
     
-    # Instead of showing total rows, show the number of bundles
+    # Display number of bundles found.
     st.write(f"File loaded: {len(data)} bundles found.")
     
     os.makedirs(base_folder, exist_ok=True)
@@ -158,6 +155,9 @@ def process_file_cached(file_bytes, session_id):
                         file.write(image_data)
                 else:
                     error_list.append((bundle_code, product_code))
+        
+        if progress_bar is not None:
+            progress_bar.progress((i + 1) / total)
     
     if not mixed_sets_needed and os.path.exists(mixed_folder):
         shutil.rmtree(mixed_folder)
@@ -250,10 +250,12 @@ if show_image and product_code:
     else:
         st.sidebar.error(f"⚠️ No image found for {product_code} with -p{selected_extension}.jpg")
 
-# Main Content: File Upload & Processing
+# Main Content: File Upload & Processing (with progress bar)
 uploaded_file = st.file_uploader("Upload CSV File", type=["csv"], key="file_uploader")
 if uploaded_file:
-    zip_data, missing_images_data, missing_images_df, bundle_list_data = process_file_cached(uploaded_file.getvalue(), session_id)
+    progress_bar = st.progress(0)
+    zip_data, missing_images_data, missing_images_df, bundle_list_data = process_file(uploaded_file, progress_bar)
+    progress_bar.empty()
     if zip_data:
         st.success("**Processing complete! Download your files below.**")
         st.download_button(label="📥 Download Images for Bundle Creation", data=zip_data, file_name=f"bundle_images_{session_id}.zip", mime="application/zip")
