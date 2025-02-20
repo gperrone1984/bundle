@@ -92,7 +92,7 @@ def process_file(uploaded_file, progress_bar=None):
     data.dropna(inplace=True)
     
     # Translate message: "File loaded: x rows found."
-    st.write(f"File loaded: {len(data)} rows found.")
+    st.write(f"File loaded: {len(data)} bundles found.")
     
     base_folder = "bundle_images"
     os.makedirs(base_folder, exist_ok=True)
