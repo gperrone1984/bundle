@@ -7,8 +7,7 @@ import shutil
 from io import BytesIO
 from PIL import Image, ImageChops
 
-# ----- Pulizia automatica dello stato all'avvio dell'app -----
-st.session_state.clear()
+# ----- Pulizia automatica dello stato non viene fatta qui per non interferire col file uploader -----
 
 # ---------------------- Function Definitions ----------------------
 
@@ -76,6 +75,7 @@ def clear_old_data():
 
 def process_file(uploaded_file, progress_bar=None):
     uploaded_file.seek(0)
+    # Se il tuo CSV usa la virgola come delimitatore, cambia delimiter=',' 
     data = pd.read_csv(uploaded_file, delimiter=';', dtype=str)
     
     required_columns = {'sku', 'pzns_in_set'}
@@ -83,9 +83,16 @@ def process_file(uploaded_file, progress_bar=None):
     if missing_columns:
         st.error(f"Missing required columns: {', '.join(missing_columns)}")
         return None, None, None, None
-    
+
+    if data.empty:
+        st.error("The CSV file is empty!")
+        return None, None, None, None
+
     data = data[list(required_columns)]
     data.dropna(inplace=True)
+    
+    # Debug: Mostra il numero di righe lette
+    st.write(f"File caricato: {len(data)} righe trovate.")
     
     base_folder = "bundle_images"
     os.makedirs(base_folder, exist_ok=True)
@@ -177,16 +184,15 @@ st.title("PDM Bundle Image Creator")
 
 st.markdown("""
 📌 **Instructions:**
-To prepare the input file, follow these steps:
 1. Create a **Quick Report** in Akeneo containing the list of products.
 2. Select the following options:
    - File Type: **CSV**
-   - **All Attributes** or **Grid Context** (for **Grid Context** select **ID** and **PZN included in the set**)
+   - **All Attributes** or **Grid Context** (for Grid Context select **ID** and **PZN included in the set**)
    - **With Codes**
    - **Without Media**
 """)
 
-# Clear Cache Button: elimina lo stato, i file e ricarica la pagina iniziale
+# Clear Cache Button: elimina stato, file e ricarica la pagina iniziale
 if st.button("🧹 Clear Cache and Reset Data"):
     st.session_state.clear()
     st.cache_data.clear()
@@ -236,12 +242,13 @@ if show_image and product_code:
 # Main Content: File Upload & Processing (con progress bar)
 uploaded_file = st.file_uploader("Upload CSV File", type=["csv"], key="file_uploader")
 if uploaded_file:
+    st.write("File caricato. Inizio elaborazione...")
     progress_bar = st.progress(0)
     zip_data, missing_images_data, missing_images_df, bundle_list_data = process_file(uploaded_file, progress_bar)
     progress_bar.empty()
     if zip_data:
         st.success("**Processing complete! Download your files below.**")
-        st.download_button(label="📥 **Download Images for Bundle Creation**", data=zip_data, file_name="bundle_images.zip", mime="application/zip")
+        st.download_button(label="📥 Download Images for Bundle Creation", data=zip_data, file_name="bundle_images.zip", mime="application/zip")
         st.download_button(label="📥 Download Bundle List", data=bundle_list_data, file_name="bundle_list.csv", mime="text/csv")
         if missing_images_df is not None and not missing_images_df.empty:
             st.warning("**Some images were not found:**")
