@@ -7,7 +7,18 @@ import shutil
 from io import BytesIO
 from PIL import Image, ImageChops
 
-# ----- Pulizia automatica dello stato non viene fatta qui per non interferire col file uploader -----
+# ----- Pulizia automatica all'avvio dell'app: rimuove file e cartelle salvate in precedenza -----
+def clear_old_data():
+    if os.path.exists("bundle_images"):
+        shutil.rmtree("bundle_images")
+    if os.path.exists("bundle_images.zip"):
+        os.remove("bundle_images.zip")
+    if os.path.exists("missing_images.csv"):
+        os.remove("missing_images.csv")
+    if os.path.exists("bundle_list.csv"):
+        os.remove("bundle_list.csv")
+
+clear_old_data()  # Viene eseguito ogni volta che l'app parte
 
 # ---------------------- Function Definitions ----------------------
 
@@ -63,19 +74,8 @@ def process_triple_bundle_image(image):
     final_image.paste(resized_image, (x_offset, y_offset))
     return final_image
 
-def clear_old_data():
-    if os.path.exists("bundle_images"):
-        shutil.rmtree("bundle_images")
-    if os.path.exists("bundle_images.zip"):
-        os.remove("bundle_images.zip")
-    if os.path.exists("missing_images.csv"):
-        os.remove("missing_images.csv")
-    if os.path.exists("bundle_list.csv"):
-        os.remove("bundle_list.csv")
-
 def process_file(uploaded_file, progress_bar=None):
     uploaded_file.seek(0)
-    # Se il tuo CSV usa la virgola come delimitatore, cambia delimiter=',' 
     data = pd.read_csv(uploaded_file, delimiter=';', dtype=str)
     
     required_columns = {'sku', 'pzns_in_set'}
@@ -83,15 +83,14 @@ def process_file(uploaded_file, progress_bar=None):
     if missing_columns:
         st.error(f"Missing required columns: {', '.join(missing_columns)}")
         return None, None, None, None
-
+    
     if data.empty:
         st.error("The CSV file is empty!")
         return None, None, None, None
-
+    
     data = data[list(required_columns)]
     data.dropna(inplace=True)
     
-    # Debug: Mostra il numero di righe lette
     st.write(f"File caricato: {len(data)} righe trovate.")
     
     base_folder = "bundle_images"
@@ -99,8 +98,8 @@ def process_file(uploaded_file, progress_bar=None):
     
     mixed_sets_needed = False
     mixed_folder = os.path.join(base_folder, "mixed_sets")
-    error_list = []      # Lista di tuple (bundle_code, product_code) per cui manca l'immagine
-    bundle_list = []     # Lista per memorizzare i dettagli del bundle
+    error_list = []      
+    bundle_list = []     
     
     total = len(data)
     for i, (_, row) in enumerate(data.iterrows()):
@@ -114,7 +113,7 @@ def process_file(uploaded_file, progress_bar=None):
             bundle_type = "mixed"
         bundle_list.append([bundle_code, ', '.join(product_codes), bundle_type])
         
-        if len(set(product_codes)) == 1:  # Bundle uniforme
+        if len(set(product_codes)) == 1:
             folder_name = f"{base_folder}/bundle_{num_products}"
             os.makedirs(folder_name, exist_ok=True)
             product_code = product_codes[0]
@@ -134,7 +133,7 @@ def process_file(uploaded_file, progress_bar=None):
                     error_list.append((bundle_code, product_code))
             else:
                 error_list.append((bundle_code, product_code))
-        else:  # Bundle misto
+        else:
             mixed_sets_needed = True
             bundle_folder = os.path.join(mixed_folder, bundle_code)
             os.makedirs(bundle_folder, exist_ok=True)
@@ -199,7 +198,7 @@ if st.button("🧹 Clear Cache and Reset Data"):
     clear_old_data()
     components.html("<script>window.location.href=window.location.origin+window.location.pathname;</script>", height=0)
 
-# Sidebar: Funzionalità dell'app
+# Sidebar: App functionalities
 st.sidebar.header("🔹 What This App Does")
 st.sidebar.markdown("""
 - Automates the creation of product bundles by downloading and organizing product images.
@@ -214,7 +213,7 @@ st.sidebar.markdown("""
 - Provides a tool to preview and download product images.
 """)
 
-# Product Image Preview Section (Sidebar)
+# Product Image Preview (Sidebar)
 st.sidebar.header("🔎 Product Image Preview")
 product_code = st.sidebar.text_input("Enter Product Code:")
 selected_extension = st.sidebar.selectbox("Select Image Extension:", [str(i) for i in range(1, 19)])
