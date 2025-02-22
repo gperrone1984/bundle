@@ -8,6 +8,18 @@ import uuid
 from io import BytesIO
 from PIL import Image, ImageChops
 
+# Imposta la larghezza della sidebar a 400px (modifica il valore se necessario)
+st.markdown(
+    """
+    <style>
+    [data-testid="stSidebar"] > div:first-child {
+        width: 400px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 # ----- Create a unique session ID and corresponding base folder for the session -----
 if "session_id" not in st.session_state:
     st.session_state["session_id"] = str(uuid.uuid4())
@@ -214,7 +226,8 @@ if st.button("🧹 Clear Cache and Reset Data"):
 st.sidebar.header("🔹 What This App Does")
 st.sidebar.markdown("""
 - 🤖 **Automated Bundle Creation:** Automatically generate product bundles by downloading and organizing product images.
-- 🔍 **Smart Image Retrieval:** Retrieve images from a specified URL, prioritizing manufacturer images (p1) and using Fotobox images (p10) as a fallback.
+- 📄 **CSV Integration:** Upload a CSV file containing detailed bundle and product information.
+- 🔍 **Smart Image Retrieval:** The app makes sure you get the best product image by first checking for the top-quality manufacturer image (p1) and, if that's not available, it gently falls back to the Fotobox image (p10).
 - 🖼️ **Dynamic Image Processing:** For uniform bundles, combine images side-by-side (double or triple) with proper resizing and cropping.
 - 📁 **Efficient Organization:** Uniform bundles are saved in dedicated folders, while mixed bundles are sorted into separate directories.
 - ⚠️ **Error Reporting:** Automatically log any missing images in a separate CSV file for easy troubleshooting.
