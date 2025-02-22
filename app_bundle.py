@@ -213,16 +213,14 @@ if st.button("🧹 Clear Cache and Reset Data"):
 # Sidebar: App functionalities
 st.sidebar.header("🔹 What This App Does")
 st.sidebar.markdown("""
-- Automates the creation of product bundles by downloading and organizing product images.
-- Upload a CSV file with bundle and product information.
-- Downloads images for each product from a specified URL.
-- Searches first for the manufacturer image (p1), then the Fotobox image (p10).
-- Organizes images into folders based on the bundle type.
-- Renames images for bundles double, triple etc. using the bundle code.
-- Sorts mixed-set images into separate folders.
-- Identifies missing images and logs them in a separate file.
-- Generates a ZIP file of retrieved images and a CSV file with bundle details.
-- Provides a tool to preview and download product images.
+- 🤖 **Automated Bundle Creation:** Automatically generate product bundles by downloading and organizing product images.
+- 📄 **CSV Integration:** Upload a CSV file containing detailed bundle and product information.
+- 🔍 **Smart Image Retrieval:** Retrieve images from a specified URL, prioritizing manufacturer images (p1) and using Fotobox images (p10) as a fallback.
+- 🖼️ **Dynamic Image Processing:** For uniform bundles, combine images side-by-side (double or triple) with proper resizing and cropping.
+- 📁 **Efficient Organization:** Uniform bundles are saved in dedicated folders, while mixed bundles are sorted into separate directories.
+- ⚠️ **Error Reporting:** Automatically log any missing images in a separate CSV file for easy troubleshooting.
+- 📦 **Comprehensive Output:** Generate a downloadable ZIP file with all processed images and CSV reports for bundle details and missing images.
+- 👀 **Interactive Preview:** Preview and download individual product images directly from the sidebar.
 """)
 
 # Product Image Preview (Sidebar)
