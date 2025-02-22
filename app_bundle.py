@@ -266,13 +266,13 @@ if uploaded_file:
 if "zip_data" in st.session_state:
     st.success("**Processing complete! Download your files below.**")
     st.download_button(
-        label="📥 Download Bundle Image",
+        label="🖼️ Download Bundle Image",
         data=st.session_state["zip_data"],
         file_name=f"bundle_images_{session_id}.zip",
         mime="application/zip"
     )
     st.download_button(
-        label="📥 Download Bundle List",
+        label="📋 Download Bundle List",
         data=st.session_state["bundle_list_data"],
         file_name="bundle_list.csv",
         mime="text/csv"
@@ -281,7 +281,7 @@ if "zip_data" in st.session_state:
         st.warning("**Some images were not found:**")
         st.dataframe(st.session_state["missing_images_df"].reset_index(drop=True))
         st.download_button(
-            label="📥 Download Missing Images CSV",
+            label="⚠️ Download Missing Images CSV",
             data=st.session_state["missing_images_data"],
             file_name="missing_images.csv",
             mime="text/csv"
