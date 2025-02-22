@@ -8,18 +8,6 @@ import uuid
 from io import BytesIO
 from PIL import Image, ImageChops
 
-# Imposta la larghezza statica della sidebar a 400px
-st.markdown(
-    """
-    <style>
-    [data-testid="stSidebar"] > div:first-child {
-        width: 400px;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
 # ----- Create a unique session ID and corresponding base folder for the session -----
 if "session_id" not in st.session_state:
     st.session_state["session_id"] = str(uuid.uuid4())
