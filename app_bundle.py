@@ -8,27 +8,13 @@ import uuid
 from io import BytesIO
 from PIL import Image, ImageChops
 
-# Permetti all'utente di personalizzare la larghezza della sidebar
-if "sidebar_width" not in st.session_state:
-    st.session_state["sidebar_width"] = 400
-
-# Widget nella sidebar per impostare la larghezza (tra 200px e 800px)
-custom_width = st.sidebar.number_input(
-    "Imposta la larghezza della sidebar (px):",
-    min_value=200,
-    max_value=800,
-    value=st.session_state["sidebar_width"],
-    step=10,
-)
-st.session_state["sidebar_width"] = custom_width
-
-# Inietta il CSS dinamico per la larghezza della sidebar
+# Imposta la larghezza statica della sidebar a 400px
 st.markdown(
-    f"""
+    """
     <style>
-    [data-testid="stSidebar"] > div:first-child {{
-        width: {custom_width}px;
-    }}
+    [data-testid="stSidebar"] > div:first-child {
+        width: 400px;
+    }
     </style>
     """,
     unsafe_allow_html=True,
