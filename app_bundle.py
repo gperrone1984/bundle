@@ -214,7 +214,6 @@ if st.button("🧹 Clear Cache and Reset Data"):
 st.sidebar.header("🔹 What This App Does")
 st.sidebar.markdown("""
 - 🤖 **Automated Bundle Creation:** Automatically generate product bundles by downloading and organizing product images.
-- 📄 **CSV Integration:** Upload a CSV file containing detailed bundle and product information.
 - 🔍 **Smart Image Retrieval:** Retrieve images from a specified URL, prioritizing manufacturer images (p1) and using Fotobox images (p10) as a fallback.
 - 🖼️ **Dynamic Image Processing:** For uniform bundles, combine images side-by-side (double or triple) with proper resizing and cropping.
 - 📁 **Efficient Organization:** Uniform bundles are saved in dedicated folders, while mixed bundles are sorted into separate directories.
