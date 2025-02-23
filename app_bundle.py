@@ -265,11 +265,10 @@ if show_image and product_code:
     else:
         st.sidebar.error(f"⚠️ No image found for {product_code} with -p{selected_extension}.jpg")
 
-# Main Content: File Uploader and Process CSV with FR/DE buttons next to it
+# Main Content: File Uploader and Process CSV with FR/DE buttons and label
 uploaded_file = st.file_uploader("Upload CSV File", type=["csv"], key="file_uploader")
 if uploaded_file:
-    # Display FR and DE buttons next to the Process CSV button in one row
-    cols = st.columns([2, 1, 1])
+    cols = st.columns([2, 1, 1, 1])
     with cols[0]:
         if st.button("Process CSV"):
             start_time = time.time()  # Start timer
@@ -284,13 +283,13 @@ if uploaded_file:
                 st.session_state["missing_images_data"] = missing_images_data
                 st.session_state["missing_images_df"] = missing_images_df
     with cols[1]:
+        st.markdown("**Cross-country photos:**")
+    with cols[2]:
         if st.button("FR", key="fr_button_main"):
             st.session_state["fallback_ext"] = "1-fr"
-            st.info("Fallback set to 1-fr")
-    with cols[2]:
+    with cols[3]:
         if st.button("DE", key="de_button_main"):
             st.session_state["fallback_ext"] = "1-de"
-            st.info("Fallback set to 1-de")
 
 if "zip_data" in st.session_state:
     st.success("**Processing complete! Download your files below.**")
