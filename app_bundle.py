@@ -154,7 +154,8 @@ def process_file(uploaded_file, progress_bar=None):
                         final_img = process_triple_bundle_image(img)
                     else:
                         final_img = img
-                    final_img.save(os.path.join(folder_name, f"{bundle_code}-h1.jpg"), "JPEG", quality=95)
+                    # Imposta quality a 100
+                    final_img.save(os.path.join(folder_name, f"{bundle_code}-h1.jpg"), "JPEG", quality=100)
                 except Exception as e:
                     st.error(f"Error processing image for bundle {bundle_code}: {e}")
                     error_list.append((bundle_code, product_code))
