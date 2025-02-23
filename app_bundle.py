@@ -128,7 +128,11 @@ def process_file(uploaded_file, progress_bar=None):
             folder_name = f"{base_folder}/bundle_{num_products}"
             os.makedirs(folder_name, exist_ok=True)
             product_code = product_codes[0]
-            image_data = download_image(product_code, "1")[0] or download_image(product_code, "10")[0]
+            # Tenta con estensione "1", poi "10", poi "1-fr" e infine "1-de"
+            image_data = (download_image(product_code, "1")[0] or 
+                          download_image(product_code, "10")[0] or 
+                          download_image(product_code, "1-fr")[0] or 
+                          download_image(product_code, "1-de")[0])
             if image_data:
                 try:
                     img = Image.open(BytesIO(image_data))
@@ -149,7 +153,10 @@ def process_file(uploaded_file, progress_bar=None):
             bundle_folder = os.path.join(mixed_folder, bundle_code)
             os.makedirs(bundle_folder, exist_ok=True)
             for product_code in product_codes:
-                image_data = download_image(product_code, "1")[0] or download_image(product_code, "10")[0]
+                image_data = (download_image(product_code, "1")[0] or 
+                              download_image(product_code, "10")[0] or 
+                              download_image(product_code, "1-fr")[0] or 
+                              download_image(product_code, "1-de")[0])
                 if image_data:
                     with open(os.path.join(bundle_folder, f"{product_code}.jpg"), 'wb') as file:
                         file.write(image_data)
@@ -215,7 +222,7 @@ st.sidebar.header("🔹 What This App Does")
 st.sidebar.markdown("""
 - 🤖 **Automated Bundle Creation:** Automatically generate product bundles by downloading and organizing product images.
 - 📄 **CSV Integration:** Upload a CSV file containing detailed bundle and product information.
-- 🔍 **Smart Image Retrieval:** The app makes sure you get the best product image by first checking for the top-quality manufacturer image (p1) and, if that's not available, it gently falls back to the Fotobox image (p10).
+- 🔍 **Smart Image Retrieval:** The app makes sure you get the best product image by first checking for the top-quality manufacturer image (p1) and, if that's not available, it gently falls back to the Fotobox image (p10), then tries with regional variations (p1-fr e p1-de).
 - 🖼️ **Dynamic Image Processing:** For uniform bundles, combine images side-by-side (double or triple) with proper resizing and cropping.
 - 📁 **Efficient Organization:** Uniform bundles are saved in dedicated folders, while mixed bundles are sorted into separate directories.
 - ⚠️ **Error Reporting:** Automatically log any missing images in a separate CSV file for easy troubleshooting.
