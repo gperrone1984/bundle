@@ -33,7 +33,6 @@ def clear_old_data():
 clear_old_data()  # Clean session-specific files at startup
 
 # ---------------------- Helper Functions ----------------------
-
 def download_image(product_code, extension):
     if product_code.startswith(('1', '0')):
         product_code = f"D{product_code}"
@@ -105,7 +104,6 @@ def process_triple_bundle_image(image):
     return final_image
 
 # ---------------------- Main Processing Function ----------------------
-
 def process_file(uploaded_file, progress_bar=None):
     uploaded_file.seek(0)
     data = pd.read_csv(uploaded_file, delimiter=';', dtype=str)
@@ -124,7 +122,6 @@ def process_file(uploaded_file, progress_bar=None):
     data.dropna(inplace=True)
     
     st.write(f"File loaded: {len(data)} bundles found.")
-    
     os.makedirs(base_folder, exist_ok=True)
     
     mixed_sets_needed = False
@@ -230,23 +227,23 @@ st.markdown("""
    - **Without Media**
 """)
 
-# Sposta il box di fallback nella sidebar, sotto il menu dell'app
-with st.sidebar:
-    st.markdown("<h5 style='font-size:16px;'>Select country for cross-country photos</h5>", unsafe_allow_html=True)
-    cols = st.columns(2, gap="small")
-    with cols[0]:
-        if st.button("FR", key="fr_button"):
-            st.session_state["fallback_ext"] = "1-fr"
-            st.info("Fallback set to 1-fr")
-    with cols[1]:
-        if st.button("DE", key="de_button"):
-            st.session_state["fallback_ext"] = "1-de"
-            st.info("Fallback set to 1-de")
+# Sidebar: What This App Does
+st.sidebar.header("🔹 What This App Does")
+st.sidebar.markdown("""
+- **Automated Bundle Creation:** Automatically generate product bundles by downloading and organizing product images.
+- **CSV Integration:** Upload a CSV file containing detailed bundle and product information.
+- **Smart Image Retrieval:** The app first tries for the top-quality manufacturer image (p1) and then Fotobox (p10). If these are not found, it uses the fallback extension selected by the user (FR → 1-fr, DE → 1-de).
+- **Dynamic Image Processing:** For uniform bundles, combine images side-by-side (double or triple) with proper resizing and cropping.
+- **Efficient Organization:** Uniform bundles are saved in dedicated folders, while mixed bundles are sorted into separate directories. Bundles with regional images are stored in "cross-country".
+- **Error Reporting:** Automatically log any missing images in a separate CSV file for troubleshooting.
+- **Comprehensive Output:** Generate a downloadable ZIP file with all processed images and CSV reports for bundle details and missing images.
+- **Interactive Preview:** Preview and download individual product images directly from the sidebar.
+""")
 
-# Sidebar: Product preview (già presente)
+# Sidebar: Product Preview remains in the sidebar
 st.sidebar.header("🔎 Product Image Preview")
 product_code = st.sidebar.text_input("Enter Product Code:")
-selected_extension = st.sidebar.selectbox("Select Image Extension:", [str(i) for i in range(1, 19)])
+selected_extension = st.sidebar.selectbox("Select Image Extension:", [str(i) for i in range(1, 19)], key="sidebar_ext")
 with st.sidebar:
     col_button, col_spinner = st.columns([2, 1])
     show_image = col_button.button("Show Image")
@@ -268,20 +265,32 @@ if show_image and product_code:
     else:
         st.sidebar.error(f"⚠️ No image found for {product_code} with -p{selected_extension}.jpg")
 
+# Main Content: File Uploader and Process CSV with FR/DE buttons next to it
 uploaded_file = st.file_uploader("Upload CSV File", type=["csv"], key="file_uploader")
 if uploaded_file:
-    if st.button("Process CSV"):
-        start_time = time.time()  # Start timer
-        progress_bar = st.progress(0)
-        zip_data, missing_images_data, missing_images_df, bundle_list_data = process_file(uploaded_file, progress_bar)
-        progress_bar.empty()
-        elapsed_time = time.time() - start_time
-        st.write(f"Time to download and process images: {elapsed_time:.2f} seconds")
-        if zip_data:
-            st.session_state["zip_data"] = zip_data
-            st.session_state["bundle_list_data"] = bundle_list_data
-            st.session_state["missing_images_data"] = missing_images_data
-            st.session_state["missing_images_df"] = missing_images_df
+    # Display FR and DE buttons next to the Process CSV button in one row
+    cols = st.columns([2, 1, 1])
+    with cols[0]:
+        if st.button("Process CSV"):
+            start_time = time.time()  # Start timer
+            progress_bar = st.progress(0)
+            zip_data, missing_images_data, missing_images_df, bundle_list_data = process_file(uploaded_file, progress_bar)
+            progress_bar.empty()
+            elapsed_time = time.time() - start_time
+            st.write(f"Time to download and process images: {elapsed_time:.2f} seconds")
+            if zip_data:
+                st.session_state["zip_data"] = zip_data
+                st.session_state["bundle_list_data"] = bundle_list_data
+                st.session_state["missing_images_data"] = missing_images_data
+                st.session_state["missing_images_df"] = missing_images_df
+    with cols[1]:
+        if st.button("FR", key="fr_button_main"):
+            st.session_state["fallback_ext"] = "1-fr"
+            st.info("Fallback set to 1-fr")
+    with cols[2]:
+        if st.button("DE", key="de_button_main"):
+            st.session_state["fallback_ext"] = "1-de"
+            st.info("Fallback set to 1-de")
 
 if "zip_data" in st.session_state:
     st.success("**Processing complete! Download your files below.**")
