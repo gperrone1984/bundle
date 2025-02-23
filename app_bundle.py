@@ -122,7 +122,7 @@ def process_file(uploaded_file, progress_bar=None):
     
     mixed_sets_needed = False
     mixed_folder = os.path.join(base_folder, "mixed_sets")
-    error_list = []      # Tuple: (bundle_code, product_code)
+    error_list = []      # Lista di tuple: (bundle_code, product_code)
     bundle_list = []     # Dettagli dei bundle
     
     total = len(data)
@@ -130,18 +130,17 @@ def process_file(uploaded_file, progress_bar=None):
         bundle_code = row['sku'].strip()
         product_codes = [code.strip() for code in row['pzns_in_set'].strip().split(',')]
         num_products = len(product_codes)
+        is_uniform = (len(set(product_codes)) == 1)
+        bundle_type = f"bundle of {num_products}" if is_uniform else "mixed"
+        bundle_cross_country = False  # Flag per indicare se il bundle è cross-country
         
-        bundle_type = f"bundle of {num_products}" if len(set(product_codes)) == 1 else "mixed"
-        bundle_list.append([bundle_code, ', '.join(product_codes), bundle_type])
-        
-        if len(set(product_codes)) == 1:  # Bundle uniforme
+        if is_uniform:
             product_code = product_codes[0]
             image_data, used_ext = get_image_with_fallback(product_code)
-            # Se l'immagine proviene da "1-fr" o "1-de", salva in "cross-country"
             if used_ext in ["1-fr", "1-de"]:
-                folder_name = os.path.join(base_folder, "cross-country")
-            else:
-                folder_name = os.path.join(base_folder, f"bundle_{num_products}")
+                bundle_cross_country = True
+            # Scegli la cartella di salvataggio in base alla provenienza dell'immagine
+            folder_name = os.path.join(base_folder, "cross-country") if bundle_cross_country else os.path.join(base_folder, f"bundle_{num_products}")
             os.makedirs(folder_name, exist_ok=True)
             if image_data:
                 try:
@@ -158,14 +157,16 @@ def process_file(uploaded_file, progress_bar=None):
                     error_list.append((bundle_code, product_code))
             else:
                 error_list.append((bundle_code, product_code))
-        else:  # Bundle misto
+        else:
             mixed_sets_needed = True
             bundle_folder = os.path.join(mixed_folder, bundle_code)
             os.makedirs(bundle_folder, exist_ok=True)
             for product_code in product_codes:
                 image_data, used_ext = get_image_with_fallback(product_code)
+                if used_ext in ["1-fr", "1-de"]:
+                    bundle_cross_country = True
                 if image_data:
-                    # Per prodotti con fallback regionale, crea una sottocartella "cross-country" all'interno del bundle
+                    # Per fallback regionale, salva in una sottocartella "cross-country" all'interno del bundle
                     if used_ext in ["1-fr", "1-de"]:
                         prod_folder = os.path.join(bundle_folder, "cross-country")
                         os.makedirs(prod_folder, exist_ok=True)
@@ -178,6 +179,9 @@ def process_file(uploaded_file, progress_bar=None):
         
         if progress_bar is not None:
             progress_bar.progress((i + 1) / total)
+        
+        # Aggiunge alla lista dei bundle anche l'indicazione "Yes" se cross-country, altrimenti "No"
+        bundle_list.append([bundle_code, ', '.join(product_codes), bundle_type, "Yes" if bundle_cross_country else "No"])
     
     if not mixed_sets_needed and os.path.exists(mixed_folder):
         shutil.rmtree(mixed_folder)
@@ -195,7 +199,7 @@ def process_file(uploaded_file, progress_bar=None):
     with open(missing_images_csv, "rb") as f:
         missing_images_data = f.read()
     
-    bundle_list_df = pd.DataFrame(bundle_list, columns=["sku", "pzns_in_set", "bundle type"])
+    bundle_list_df = pd.DataFrame(bundle_list, columns=["sku", "pzns_in_set", "bundle type", "cross-country"])
     bundle_list_csv = "bundle_list.csv"
     bundle_list_df.to_csv(bundle_list_csv, index=False, sep=';')
     with open(bundle_list_csv, "rb") as f:
@@ -232,9 +236,9 @@ st.sidebar.header("🔹 What This App Does")
 st.sidebar.markdown("""
 - 🤖 **Automated Bundle Creation:** Automatically generate product bundles by downloading and organizing product images.
 - 📄 **CSV Integration:** Upload a CSV file containing detailed bundle and product information.
-- 🔍 **Smart Image Retrieval:** The app makes sure you get the best product image by first checking for the top-quality manufacturer image (p1) and, if that's not available, it gently falls back to the Fotobox image (p10), then tries with regional variations (p1-fr e p1-de).
+- 🔍 **Smart Image Retrieval:** The app makes sure you get the best product image by first checking for the top-quality manufacturer image (p1) and, if that's not available, it gently falls back to the Fotobox image (p10), then tries with regional variations (p1-fr and p1-de).
 - 🖼️ **Dynamic Image Processing:** For uniform bundles, combine images side-by-side (double or triple) with proper resizing and cropping.
-- 📁 **Efficient Organization:** Uniform bundles are saved in dedicated folders, while mixed bundles are sorted into separate directories. Bundles con immagini regionali are stored in "cross-country".
+- 📁 **Efficient Organization:** Uniform bundles are saved in dedicated folders, while mixed bundles are sorted into separate directories. Bundles with regional images are stored in "cross-country".
 - ⚠️ **Error Reporting:** Automatically log any missing images in a separate CSV file for easy troubleshooting.
 - 📦 **Comprehensive Output:** Generate a downloadable ZIP file with all processed images and CSV reports for bundle details and missing images.
 - 👀 **Interactive Preview:** Preview and download individual product images directly from the sidebar.
@@ -267,7 +271,7 @@ if show_image and product_code:
 uploaded_file = st.file_uploader("Upload CSV File", type=["csv"], key="file_uploader")
 if uploaded_file:
     if st.button("Process CSV"):
-        start_time = time.time()  # Inizio cronometro
+        start_time = time.time()  # Avvia cronometro
         progress_bar = st.progress(0)
         zip_data, missing_images_data, missing_images_df, bundle_list_data = process_file(uploaded_file, progress_bar)
         progress_bar.empty()
