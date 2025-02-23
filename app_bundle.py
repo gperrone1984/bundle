@@ -251,7 +251,7 @@ if show_image and product_code:
 # Main Content: File Upload & Processing (with progress bar)
 uploaded_file = st.file_uploader("Upload CSV File", type=["csv"], key="file_uploader")
 if uploaded_file:
-    # Pulsante separato per processare il CSV
+    # Separate button to process the CSV
     if st.button("Process CSV"):
         progress_bar = st.progress(0)
         zip_data, missing_images_data, missing_images_df, bundle_list_data = process_file(uploaded_file, progress_bar)
@@ -262,30 +262,27 @@ if uploaded_file:
             st.session_state["missing_images_data"] = missing_images_data
             st.session_state["missing_images_df"] = missing_images_df
 
-# Visualizzazione dei pulsanti di download e del box con le immagini mancanti in una colonna a destra
+# Display the download buttons and missing images info in a single block
 if "zip_data" in st.session_state:
-    col_main, col_right = st.columns([3, 1])
-    with col_main:
-        st.success("**Processing complete!**")
-    with col_right:
+    st.success("**Processing complete! Download your files below.**")
+    st.download_button(
+        label="🖼️ Download Bundle Image",
+        data=st.session_state["zip_data"],
+        file_name=f"bundle_images_{session_id}.zip",
+        mime="application/zip"
+    )
+    st.download_button(
+        label="📋 Download Bundle List",
+        data=st.session_state["bundle_list_data"],
+        file_name="bundle_list.csv",
+        mime="text/csv"
+    )
+    if st.session_state["missing_images_df"] is not None and not st.session_state["missing_images_df"].empty:
+        st.warning("**Some images were not found:**")
+        st.dataframe(st.session_state["missing_images_df"].reset_index(drop=True))
         st.download_button(
-            label="🖼️ Download Bundle Image",
-            data=st.session_state["zip_data"],
-            file_name=f"bundle_images_{session_id}.zip",
-            mime="application/zip"
-        )
-        st.download_button(
-            label="📋 Download Bundle List",
-            data=st.session_state["bundle_list_data"],
-            file_name="bundle_list.csv",
+            label="⚠️ Download Missing Images CSV",
+            data=st.session_state["missing_images_data"],
+            file_name="missing_images.csv",
             mime="text/csv"
         )
-        if st.session_state["missing_images_df"] is not None and not st.session_state["missing_images_df"].empty:
-            st.warning("**Some images were not found:**")
-            st.dataframe(st.session_state["missing_images_df"].reset_index(drop=True))
-            st.download_button(
-                label="⚠️ Download Missing Images CSV",
-                data=st.session_state["missing_images_data"],
-                file_name="missing_images.csv",
-                mime="text/csv"
-            )
