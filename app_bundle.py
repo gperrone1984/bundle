@@ -45,10 +45,10 @@ def download_image(product_code, extension):
 
 def get_image_with_fallback(product_code):
     """
-    Prova prima l'estensione "1", poi "10". 
-    Se non viene trovata nessuna immagine, e se l'utente ha selezionato un fallback (FR o DE),
-    prova l'estensione scelta.
-    Restituisce una tupla (content, used_ext) oppure (None, None).
+    Tries first extension "1", then "10". 
+    If these are not found and if the user has selected a fallback via the FR/DE buttons,
+    it then tries that extension.
+    Returns a tuple (content, used_ext) or (None, None).
     """
     for ext in ["1", "10"]:
         content, _ = download_image(product_code, ext)
@@ -129,8 +129,8 @@ def process_file(uploaded_file, progress_bar=None):
     
     mixed_sets_needed = False
     mixed_folder = os.path.join(base_folder, "mixed_sets")
-    error_list = []      # Lista di tuple: (bundle_code, product_code)
-    bundle_list = []     # Dettagli dei bundle: codice, lista pzns, tipologia, cross-country
+    error_list = []      # List of tuples: (bundle_code, product_code)
+    bundle_list = []     # List with details: bundle code, pzns list, bundle type, cross-country flag
     
     total = len(data)
     for i, (_, row) in enumerate(data.iterrows()):
@@ -139,7 +139,7 @@ def process_file(uploaded_file, progress_bar=None):
         num_products = len(product_codes)
         is_uniform = (len(set(product_codes)) == 1)
         bundle_type = f"bundle of {num_products}" if is_uniform else "mixed"
-        bundle_cross_country = False  # Flag per indicare se il bundle è cross-country
+        bundle_cross_country = False
         
         if is_uniform:
             product_code = product_codes[0]
@@ -230,61 +230,20 @@ st.markdown("""
    - **Without Media**
 """)
 
-# Pulsanti per la scelta del fallback regionale, posizionati vicino al pulsante "Process CSV"
-col1, col2, col3 = st.columns([2, 1, 1])
-with col2:
-    if st.button("FR"):
-        st.session_state["fallback_ext"] = "1-fr"
-        st.success("Fallback set to 1-fr")
-with col3:
-    if st.button("DE"):
-        st.session_state["fallback_ext"] = "1-de"
-        st.success("Fallback set to 1-de")
-
-if st.button("🧹 Clear Cache and Reset Data"):
-    st.session_state.clear()
-    st.cache_data.clear()
-    clear_old_data()
-    components.html("<script>window.location.href=window.location.origin+window.location.pathname;</script>", height=0)
-
-st.sidebar.header("🔹 What This App Does")
-st.sidebar.markdown("""
-- 🤖 **Automated Bundle Creation:** Automatically generate product bundles by downloading and organizing product images.
-- 📄 **CSV Integration:** Upload a CSV file containing detailed bundle and product information.
-- 🔍 **Smart Image Retrieval:** The app first tries for the top-quality manufacturer image (p1) and then Fotobox (p10). If these are not found, it uses the fallback extension selected by the user (FR → 1-fr, DE → 1-de).
-- 🖼️ **Dynamic Image Processing:** For uniform bundles, combine images side-by-side (double or triple) with proper resizing and cropping.
-- 📁 **Efficient Organization:** Uniform bundles are saved in dedicated folders, while mixed bundles are sorted into separate directories. Bundles with regional images are stored in "cross-country".
-- ⚠️ **Error Reporting:** Automatically log any missing images in a separate CSV file for easy troubleshooting.
-- 📦 **Comprehensive Output:** Generate a downloadable ZIP file with all processed images and CSV reports for bundle details and missing images.
-- 👀 **Interactive Preview:** Preview and download individual product images directly from the sidebar.
-""")
-
-st.sidebar.header("🔎 Product Image Preview")
-product_code = st.sidebar.text_input("Enter Product Code:")
-selected_extension = st.sidebar.selectbox("Select Image Extension:", [str(i) for i in range(1, 19)])
-with st.sidebar:
-    col_button, col_spinner = st.columns([2, 1])
-    show_image = col_button.button("Show Image")
-    spinner_placeholder = col_spinner.empty()
-
-if show_image and product_code:
-    with spinner_placeholder:
-        with st.spinner("Processing..."):
-            image_data, image_url = download_image(product_code, selected_extension)
-    if image_data:
-        image = Image.open(BytesIO(image_data))
-        st.sidebar.image(image, caption=f"Product: {product_code} (p{selected_extension})", use_container_width=True)
-        st.sidebar.download_button(
-            label="📥 Download Image",
-            data=image_data,
-            file_name=f"{product_code}-p{selected_extension}.jpg",
-            mime="image/jpeg"
-        )
-    else:
-        st.sidebar.error(f"⚠️ No image found for {product_code} with -p{selected_extension}.jpg")
-
+# Dopo il caricamento del file, mostra il box per selezionare il paese per le foto cross-country
 uploaded_file = st.file_uploader("Upload CSV File", type=["csv"], key="file_uploader")
 if uploaded_file:
+    st.markdown("### Select country for cross-country photos")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("FR", key="fr_button"):
+            st.session_state["fallback_ext"] = "1-fr"
+            st.info("Fallback set to 1-fr")
+    with col2:
+        if st.button("DE", key="de_button"):
+            st.session_state["fallback_ext"] = "1-de"
+            st.info("Fallback set to 1-de")
+    
     if st.button("Process CSV"):
         start_time = time.time()  # Start timer
         progress_bar = st.progress(0)
