@@ -45,7 +45,7 @@ def download_image(product_code, extension):
 def get_image_with_fallback(product_code):
     """
     Tries first extension "1", then "10". 
-    If these are not found and if the user has selected a fallback (FR or DE),
+    If these are not found and if the user has selected a fallback via the FR/DE buttons,
     it then tries that extension.
     Returns a tuple (content, used_ext) or (None, None).
     """
@@ -285,7 +285,7 @@ if uploaded_file:
             elapsed_time = time.time() - start_time
             minutes = int(elapsed_time // 60)
             seconds = int(elapsed_time % 60)
-            st.write(f"Time to download and process images: {minutes}:{seconds:02d} minutes")
+            st.write(f"Time to download and process images: {minutes} minutes and {seconds} seconds")
             if zip_data:
                 st.session_state["zip_data"] = zip_data
                 st.session_state["bundle_list_data"] = bundle_list_data
