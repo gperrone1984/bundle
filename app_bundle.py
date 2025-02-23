@@ -45,7 +45,7 @@ def download_image(product_code, extension):
 def get_image_with_fallback(product_code):
     """
     Tries first extension "1", then "10". 
-    If these are not found and if the user has selected a fallback via the FR/DE buttons,
+    If these are not found and if the user has selected a fallback (FR or DE),
     it then tries that extension.
     Returns a tuple (content, used_ext) or (None, None).
     """
@@ -154,7 +154,6 @@ def process_file(uploaded_file, progress_bar=None):
                         final_img = process_triple_bundle_image(img)
                     else:
                         final_img = img
-                    # Imposta quality a 100
                     final_img.save(os.path.join(folder_name, f"{bundle_code}-h1.jpg"), "JPEG", quality=100)
                 except Exception as e:
                     st.error(f"Error processing image for bundle {bundle_code}: {e}")
@@ -235,18 +234,19 @@ if st.button("🧹 Clear Cache and Reset Data"):
     clear_old_data()
     components.html("<script>window.location.href=window.location.origin+window.location.pathname;</script>", height=0)
 
-# Sidebar: What This App Does
+# Sidebar: What This App Does (Semplified with icons)
 st.sidebar.header("🔹 What This App Does")
 st.sidebar.markdown("""
-- **Automated Bundle Creation:** Automatically generate product bundles by downloading and organizing product images.
-- **CSV Integration:** Upload a CSV file containing detailed bundle and product information.
-- **Smart Image Retrieval:** The app first tries for the top-quality manufacturer image (p1) and then Fotobox (p10). If these are not found, it uses the fallback extension selected by the user (FR → 1-fr, DE → 1-de).
-- **Dynamic Image Processing:** For uniform bundles, combine images side-by-side (double or triple) with proper resizing and cropping.
-- **Efficient Organization:** Uniform bundles are saved in dedicated folders, while mixed bundles are sorted into separate directories. Bundles with regional images are stored in "cross-country".
-- **Error Reporting:** Automatically log any missing images in a separate CSV file for troubleshooting.
-- **Comprehensive Output:** Generate a downloadable ZIP file with all processed images and CSV reports for bundle details and missing images.
-- **Interactive Preview:** Preview and download individual product images directly from the sidebar.
-""")
+- 🤖 **Automated Bundle Creation:** Automatically create product bundles by downloading and organizing images.
+- 📄 **CSV Upload:** Import a CSV report with product info.
+- 🔍 **Smart Image Retrieval:** Fetch high-quality images (p1, then p10). If missing, use the selected fallback (FR → 1-fr, DE → 1-de).
+- 🌐 **Language Selection:** You can select the language for cross-country images.
+- 🎨 **Dynamic Processing:** Combine images (double/triple) with proper resizing.
+- 📁 **Efficient Organization:** Save uniform bundles in dedicated folders and mixed bundles in separate directories. Regional images go to "cross-country".
+- 🚨 **Error Logging:** Missing images are logged in a CSV.
+- 📦 **Download:** Get a ZIP with all processed images and reports.
+- 👀 **Interactive Preview:** Preview and download individual product images from the sidebar.
+""", unsafe_allow_html=True)
 
 # Sidebar: Product Image Preview
 st.sidebar.header("🔎 Product Image Preview")
