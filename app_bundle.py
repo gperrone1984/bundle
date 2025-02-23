@@ -45,7 +45,7 @@ def download_image(product_code, extension):
 def get_image_with_fallback(product_code):
     """
     Tries first extension "1", then "10". 
-    If these are not found and if the user has selected a fallback (FR o DE),
+    If these are not found and if the user has selected a fallback (FR or DE),
     it then tries that extension.
     Returns a tuple (content, used_ext) or (None, None).
     """
@@ -68,23 +68,14 @@ def trim(im):
         return im.crop(bbox)
     return im
 
-def process_double_bundle_image(image, orientation="horizontal"):
+def process_double_bundle_image(image):
     image = trim(image)
     width, height = image.size
-
-    if orientation == "horizontal":
-        merged_width = width * 2
-        merged_height = height
-        merged_image = Image.new("RGB", (merged_width, merged_height), (255, 255, 255))
-        merged_image.paste(image, (0, 0))
-        merged_image.paste(image, (width, 0))
-    else:  # verticale
-        merged_width = width
-        merged_height = height * 2
-        merged_image = Image.new("RGB", (merged_width, merged_height), (255, 255, 255))
-        merged_image.paste(image, (0, 0))
-        merged_image.paste(image, (0, height))
-        
+    merged_width = width * 2
+    merged_height = height
+    merged_image = Image.new("RGB", (merged_width, merged_height), (255, 255, 255))
+    merged_image.paste(image, (0, 0))
+    merged_image.paste(image, (width, 0))
     scale_factor = min(1000 / merged_width, 1000 / merged_height)
     new_size = (int(merged_width * scale_factor), int(merged_height * scale_factor))
     resized_image = merged_image.resize(new_size, Image.LANCZOS)
@@ -94,25 +85,15 @@ def process_double_bundle_image(image, orientation="horizontal"):
     final_image.paste(resized_image, (x_offset, y_offset))
     return final_image
 
-def process_triple_bundle_image(image, orientation="horizontal"):
+def process_triple_bundle_image(image):
     image = trim(image)
     width, height = image.size
-
-    if orientation == "horizontal":
-        merged_width = width * 3
-        merged_height = height
-        merged_image = Image.new("RGB", (merged_width, merged_height), (255, 255, 255))
-        merged_image.paste(image, (0, 0))
-        merged_image.paste(image, (width, 0))
-        merged_image.paste(image, (width * 2, 0))
-    else:  # verticale
-        merged_width = width
-        merged_height = height * 3
-        merged_image = Image.new("RGB", (merged_width, merged_height), (255, 255, 255))
-        merged_image.paste(image, (0, 0))
-        merged_image.paste(image, (0, height))
-        merged_image.paste(image, (0, height * 2))
-        
+    merged_width = width * 3
+    merged_height = height
+    merged_image = Image.new("RGB", (merged_width, merged_height), (255, 255, 255))
+    merged_image.paste(image, (0, 0))
+    merged_image.paste(image, (width, 0))
+    merged_image.paste(image, (width * 2, 0))
     scale_factor = min(1000 / merged_width, 1000 / merged_height)
     new_size = (int(merged_width * scale_factor), int(merged_height * scale_factor))
     resized_image = merged_image.resize(new_size, Image.LANCZOS)
@@ -121,16 +102,6 @@ def process_triple_bundle_image(image, orientation="horizontal"):
     y_offset = (1000 - new_size[1]) // 2
     final_image.paste(resized_image, (x_offset, y_offset))
     return final_image
-
-def find_bundle_image(bundle_code):
-    """
-    Cerca ricorsivamente all'interno della cartella base un file immagine che inizi con il codice bundle.
-    """
-    for root, dirs, files in os.walk(base_folder):
-        for file in files:
-            if file.startswith(bundle_code) and file.endswith(".jpg"):
-                return os.path.join(root, file)
-    return None
 
 # ---------------------- Main Processing Function ----------------------
 def process_file(uploaded_file, progress_bar=None):
@@ -164,7 +135,7 @@ def process_file(uploaded_file, progress_bar=None):
         product_codes = [code.strip() for code in row['pzns_in_set'].strip().split(',')]
         num_products = len(product_codes)
         is_uniform = (len(set(product_codes)) == 1)
-        bundle_type = f"bundle di {num_products}" if is_uniform else "mixed"
+        bundle_type = f"bundle of {num_products}" if is_uniform else "mixed"
         bundle_cross_country = False
         
         if is_uniform:
@@ -178,9 +149,9 @@ def process_file(uploaded_file, progress_bar=None):
                 try:
                     img = Image.open(BytesIO(image_data))
                     if num_products == 2:
-                        final_img = process_double_bundle_image(img, orientation=st.session_state.get("orientation", "horizontal"))
+                        final_img = process_double_bundle_image(img)
                     elif num_products == 3:
-                        final_img = process_triple_bundle_image(img, orientation=st.session_state.get("orientation", "horizontal"))
+                        final_img = process_triple_bundle_image(img)
                     else:
                         final_img = img
                     final_img.save(os.path.join(folder_name, f"{bundle_code}-h1.jpg"), "JPEG", quality=100)
@@ -235,9 +206,6 @@ def process_file(uploaded_file, progress_bar=None):
     with open(bundle_list_csv, "rb") as f:
         bundle_list_data = f.read()
     
-    # Salva il dataframe dei bundle in sessione per l'anteprima
-    st.session_state["bundle_list_df"] = bundle_list_df
-    
     zip_path = f"bundle_images_{session_id}.zip"
     shutil.make_archive("bundle_images_temp", 'zip', base_folder)
     os.rename("bundle_images_temp.zip", zip_path)
@@ -250,11 +218,11 @@ def process_file(uploaded_file, progress_bar=None):
 st.title("PDM Bundle Image Creator")
 
 st.markdown("""
-📌 **Istruzioni:**
-1. Creare un **Quick Report** in Akeneo contenente la lista dei prodotti.
-2. Selezionare le opzioni:
-   - Tipo file: **CSV**
-   - **All Attributes** o **Grid Context** (per Grid Context selezionare **ID** e **PZN included in the set**)
+📌 **Instructions:**
+1. Create a **Quick Report** in Akeneo containing the list of products.
+2. Select the following options:
+   - File Type: **CSV**
+   - **All Attributes** or **Grid Context** (for Grid Context select **ID** and **PZN included in the set**)
    - **With Codes**
    - **Without Media**
 """)
@@ -266,69 +234,66 @@ if st.button("🧹 Clear Cache and Reset Data"):
     clear_old_data()
     components.html("<script>window.location.href=window.location.origin+window.location.pathname;</script>", height=0)
 
-# Sidebar: Sezione per la preview dei codici dei bundle e scelta dell'orientamento
-st.sidebar.header("🔎 Anteprima Bundle")
-orientation_preview = st.sidebar.selectbox("Seleziona Orientamento:", ["horizontal", "vertical"])
-# Salva l'orientamento scelto in sessione per essere usato anche in fase di processing
-st.session_state["orientation"] = orientation_preview
+# Sidebar: What This App Does (Semplified with icons)
+st.sidebar.header("🔹 What This App Does")
+st.sidebar.markdown("""
+- 🤖 **Automated Bundle Creation:** Automatically create product bundles by downloading and organizing images.
+- 📄 **CSV Upload:** Import a CSV report with product info.
+- 🔍 **Smart Image Retrieval:** Fetch high-quality images (p1, then p10).
+- 🌐 **Language Selection:** You can select the language for cross-country images.
+- 🎨 **Dynamic Processing:** Combine images (double/triple) with proper resizing.
+- 📁 **Efficient Organization:** Save uniform bundles in dedicated folders and mixed bundles in separate directories. Language specific images go to "cross-country".
+- 🚨 **Error Logging:** Missing images are logged in a CSV.
+- 📦 **Download:** Get a ZIP with all processed images and reports.
+- 👀 **Interactive Preview:** Preview and download individual product images from the sidebar.
+""", unsafe_allow_html=True)
 
-if "bundle_list_df" in st.session_state and not st.session_state["bundle_list_df"].empty:
-    bundle_codes = st.session_state["bundle_list_df"]["sku"].tolist()
-    selected_bundle = st.sidebar.selectbox("Seleziona Bundle da visualizzare:", bundle_codes)
-    if st.sidebar.button("Visualizza Anteprima Bundle"):
-        # Cerca l'immagine del bundle selezionato
-        preview_path = find_bundle_image(selected_bundle)
-        if preview_path and os.path.exists(preview_path):
-            preview_img = Image.open(preview_path)
-            st.sidebar.image(preview_img, caption=f"Anteprima Bundle: {selected_bundle} ({orientation_preview})", use_column_width=True)
-        else:
-            st.sidebar.error("Nessuna immagine disponibile per questo bundle.")
-
-# Sidebar: Preview prodotto singolo (già esistente)
-st.sidebar.header("🔎 Anteprima Prodotto")
-product_code = st.sidebar.text_input("Inserisci Codice Prodotto:")
-selected_extension = st.sidebar.selectbox("Seleziona Estensione Immagine:", [str(i) for i in range(1, 19)], key="sidebar_ext")
+# Sidebar: Product Image Preview
+st.sidebar.header("🔎 Product Image Preview")
+product_code = st.sidebar.text_input("Enter Product Code:")
+selected_extension = st.sidebar.selectbox("Select Image Extension:", [str(i) for i in range(1, 19)], key="sidebar_ext")
 with st.sidebar:
     col_button, col_spinner = st.columns([2, 1])
-    show_image = col_button.button("Mostra Immagine")
+    show_image = col_button.button("Show Image")
     spinner_placeholder = col_spinner.empty()
 
 if show_image and product_code:
     with spinner_placeholder:
-        with st.spinner("Elaborazione in corso..."):
+        with st.spinner("Processing..."):
             image_data, image_url = download_image(product_code, selected_extension)
     if image_data:
         image = Image.open(BytesIO(image_data))
-        st.sidebar.image(image, caption=f"Prodotto: {product_code} (p{selected_extension})", use_container_width=True)
+        st.sidebar.image(image, caption=f"Product: {product_code} (p{selected_extension})", use_container_width=True)
         st.sidebar.download_button(
-            label="📥 Scarica Immagine",
+            label="📥 Download Image",
             data=image_data,
             file_name=f"{product_code}-p{selected_extension}.jpg",
             mime="image/jpeg"
         )
     else:
-        st.sidebar.error(f"⚠️ Immagine non trovata per {product_code} con -p{selected_extension}.jpg")
+        st.sidebar.error(f"⚠️ No image found for {product_code} with -p{selected_extension}.jpg")
 
-# Main Content: File Uploader e processazione CSV
-uploaded_file = st.file_uploader("Carica il file CSV", type=["csv"], key="file_uploader")
+# Main Content: File Uploader and Process CSV with FR/DE buttons and cross-country label
+uploaded_file = st.file_uploader("Upload CSV File", type=["csv"], key="file_uploader")
 if uploaded_file:
     cols = st.columns([2, 1, 1, 1])
     with cols[0]:
-        if st.button("Processa CSV"):
-            start_time = time.time()  # Avvio timer
+        if st.button("Process CSV"):
+            start_time = time.time()  # Start timer
             progress_bar = st.progress(0)
             zip_data, missing_images_data, missing_images_df, bundle_list_data = process_file(uploaded_file, progress_bar)
             progress_bar.empty()
             elapsed_time = time.time() - start_time
             minutes = int(elapsed_time // 60)
             seconds = int(elapsed_time % 60)
-            st.write(f"Tempo di elaborazione: {minutes} minuti e {seconds} secondi")
+            st.write(f"Time to download and process images: {minutes} minutes and {seconds} seconds")
             if zip_data:
                 st.session_state["zip_data"] = zip_data
                 st.session_state["bundle_list_data"] = bundle_list_data
                 st.session_state["missing_images_data"] = missing_images_data
+                st.session_state["missing_images_df"] = missing_images_df
     with cols[1]:
-        st.markdown("**Foto cross-country:**")
+        st.markdown("**Cross-country photos:**")
     with cols[2]:
         if st.button("FR", key="fr_button_main"):
             st.session_state["fallback_ext"] = "1-fr"
@@ -337,24 +302,24 @@ if uploaded_file:
             st.session_state["fallback_ext"] = "1-de"
 
 if "zip_data" in st.session_state:
-    st.success("**Elaborazione completata! Scarica i file qui sotto.**")
+    st.success("**Processing complete! Download your files below.**")
     st.download_button(
-        label="🖼️ Scarica ZIP Bundle Images",
+        label="🖼️ Download Bundle Image",
         data=st.session_state["zip_data"],
         file_name=f"bundle_images_{session_id}.zip",
         mime="application/zip"
     )
     st.download_button(
-        label="📋 Scarica Lista Bundle",
+        label="📋 Download Bundle List",
         data=st.session_state["bundle_list_data"],
         file_name="bundle_list.csv",
         mime="text/csv"
     )
-    if "missing_images_df" in st.session_state and not st.session_state["missing_images_df"].empty:
-        st.warning("**Alcune immagini non sono state trovate:**")
+    if st.session_state["missing_images_df"] is not None and not st.session_state["missing_images_df"].empty:
+        st.warning("**Some images were not found:**")
         st.dataframe(st.session_state["missing_images_df"].reset_index(drop=True))
         st.download_button(
-            label="⚠️ Scarica CSV Immagini Mancanti",
+            label="⚠️ Download Missing Images CSV",
             data=st.session_state["missing_images_data"],
             file_name="missing_images.csv",
             mime="text/csv"
