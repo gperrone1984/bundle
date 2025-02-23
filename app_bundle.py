@@ -45,13 +45,20 @@ def download_image(product_code, extension):
 
 def get_image_with_fallback(product_code):
     """
-    Tenta in sequenza le estensioni "1", "10", "1-fr" e "1-de".
-    Restituisce una tupla (content, used_ext) oppure (None, None) se nessuna estensione ha successo.
+    Prova prima l'estensione "1", poi "10". 
+    Se non viene trovata nessuna immagine, e se l'utente ha selezionato un fallback (FR o DE),
+    prova l'estensione scelta.
+    Restituisce una tupla (content, used_ext) oppure (None, None).
     """
-    for ext in ["1", "10", "1-fr", "1-de"]:
+    for ext in ["1", "10"]:
         content, _ = download_image(product_code, ext)
         if content:
             return content, ext
+    fallback_ext = st.session_state.get("fallback_ext", None)
+    if fallback_ext:
+        content, _ = download_image(product_code, fallback_ext)
+        if content:
+            return content, fallback_ext
     return None, None
 
 def trim(im):
@@ -123,7 +130,7 @@ def process_file(uploaded_file, progress_bar=None):
     mixed_sets_needed = False
     mixed_folder = os.path.join(base_folder, "mixed_sets")
     error_list = []      # Lista di tuple: (bundle_code, product_code)
-    bundle_list = []     # Dettagli dei bundle
+    bundle_list = []     # Dettagli dei bundle: codice, lista pzns, tipologia, cross-country
     
     total = len(data)
     for i, (_, row) in enumerate(data.iterrows()):
@@ -139,7 +146,6 @@ def process_file(uploaded_file, progress_bar=None):
             image_data, used_ext = get_image_with_fallback(product_code)
             if used_ext in ["1-fr", "1-de"]:
                 bundle_cross_country = True
-            # Scegli la cartella di salvataggio in base alla provenienza dell'immagine
             folder_name = os.path.join(base_folder, "cross-country") if bundle_cross_country else os.path.join(base_folder, f"bundle_{num_products}")
             os.makedirs(folder_name, exist_ok=True)
             if image_data:
@@ -166,7 +172,6 @@ def process_file(uploaded_file, progress_bar=None):
                 if used_ext in ["1-fr", "1-de"]:
                     bundle_cross_country = True
                 if image_data:
-                    # Per fallback regionale, salva in una sottocartella "cross-country" all'interno del bundle
                     if used_ext in ["1-fr", "1-de"]:
                         prod_folder = os.path.join(bundle_folder, "cross-country")
                         os.makedirs(prod_folder, exist_ok=True)
@@ -180,7 +185,6 @@ def process_file(uploaded_file, progress_bar=None):
         if progress_bar is not None:
             progress_bar.progress((i + 1) / total)
         
-        # Aggiunge alla lista dei bundle anche l'indicazione "Yes" se cross-country, altrimenti "No"
         bundle_list.append([bundle_code, ', '.join(product_codes), bundle_type, "Yes" if bundle_cross_country else "No"])
     
     if not mixed_sets_needed and os.path.exists(mixed_folder):
@@ -226,6 +230,17 @@ st.markdown("""
    - **Without Media**
 """)
 
+# Pulsanti per la scelta del fallback regionale, posizionati vicino al pulsante "Process CSV"
+col1, col2, col3 = st.columns([2, 1, 1])
+with col2:
+    if st.button("FR"):
+        st.session_state["fallback_ext"] = "1-fr"
+        st.success("Fallback set to 1-fr")
+with col3:
+    if st.button("DE"):
+        st.session_state["fallback_ext"] = "1-de"
+        st.success("Fallback set to 1-de")
+
 if st.button("🧹 Clear Cache and Reset Data"):
     st.session_state.clear()
     st.cache_data.clear()
@@ -236,7 +251,7 @@ st.sidebar.header("🔹 What This App Does")
 st.sidebar.markdown("""
 - 🤖 **Automated Bundle Creation:** Automatically generate product bundles by downloading and organizing product images.
 - 📄 **CSV Integration:** Upload a CSV file containing detailed bundle and product information.
-- 🔍 **Smart Image Retrieval:** The app makes sure you get the best product image by first checking for the top-quality manufacturer image (p1) and, if that's not available, it gently falls back to the Fotobox image (p10), then tries with regional variations (p1-fr and p1-de).
+- 🔍 **Smart Image Retrieval:** The app first tries for the top-quality manufacturer image (p1) and then Fotobox (p10). If these are not found, it uses the fallback extension selected by the user (FR → 1-fr, DE → 1-de).
 - 🖼️ **Dynamic Image Processing:** For uniform bundles, combine images side-by-side (double or triple) with proper resizing and cropping.
 - 📁 **Efficient Organization:** Uniform bundles are saved in dedicated folders, while mixed bundles are sorted into separate directories. Bundles with regional images are stored in "cross-country".
 - ⚠️ **Error Reporting:** Automatically log any missing images in a separate CSV file for easy troubleshooting.
@@ -271,7 +286,7 @@ if show_image and product_code:
 uploaded_file = st.file_uploader("Upload CSV File", type=["csv"], key="file_uploader")
 if uploaded_file:
     if st.button("Process CSV"):
-        start_time = time.time()  # Avvia cronometro
+        start_time = time.time()  # Start timer
         progress_bar = st.progress(0)
         zip_data, missing_images_data, missing_images_df, bundle_list_data = process_file(uploaded_file, progress_bar)
         progress_bar.empty()
