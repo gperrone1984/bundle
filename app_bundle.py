@@ -130,7 +130,7 @@ def process_file(uploaded_file, progress_bar=None):
     mixed_sets_needed = False
     mixed_folder = os.path.join(base_folder, "mixed_sets")
     error_list = []      # List of tuples: (bundle_code, product_code)
-    bundle_list = []     # List with details: bundle code, pzns list, bundle type, cross-country flag
+    bundle_list = []     # Details: bundle code, pzns list, bundle type, cross-country flag
     
     total = len(data)
     for i, (_, row) in enumerate(data.iterrows()):
@@ -230,16 +230,16 @@ st.markdown("""
    - **Without Media**
 """)
 
-# Dopo il caricamento del file, mostra il box per selezionare il paese per le foto cross-country
+# Display the country selection box after the file is loaded
 uploaded_file = st.file_uploader("Upload CSV File", type=["csv"], key="file_uploader")
 if uploaded_file:
-    st.markdown("### Select country for cross-country photos")
-    col1, col2 = st.columns(2)
-    with col1:
+    st.markdown("<h5 style='font-size:16px;'>Select country for cross-country photos</h5>", unsafe_allow_html=True)
+    cols = st.columns(2, gap="small")
+    with cols[0]:
         if st.button("FR", key="fr_button"):
             st.session_state["fallback_ext"] = "1-fr"
             st.info("Fallback set to 1-fr")
-    with col2:
+    with cols[1]:
         if st.button("DE", key="de_button"):
             st.session_state["fallback_ext"] = "1-de"
             st.info("Fallback set to 1-de")
