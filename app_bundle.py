@@ -31,7 +31,7 @@ def clear_old_data():
 
 clear_old_data()  # Clean session-specific files at startup
 
-# ---------------------- Function Definitions ----------------------
+# ---------------------- Helper Functions ----------------------
 
 def download_image(product_code, extension):
     if product_code.startswith(('1', '0')):
@@ -40,6 +40,17 @@ def download_image(product_code, extension):
     response = requests.get(url, stream=True)
     if response.status_code == 200:
         return response.content, url
+    return None, None
+
+def get_image_with_fallback(product_code):
+    """
+    Tenta in sequenza le estensioni "1", "10", "1-fr" e "1-de".
+    Restituisce una tupla (content, used_ext) oppure (None, None) se non viene trovata nessuna immagine.
+    """
+    for ext in ["1", "10", "1-fr", "1-de"]:
+        content, _ = download_image(product_code, ext)
+        if content:
+            return content, ext
     return None, None
 
 def trim(im):
@@ -85,6 +96,8 @@ def process_triple_bundle_image(image):
     final_image.paste(resized_image, (x_offset, y_offset))
     return final_image
 
+# ---------------------- Main Processing Function ----------------------
+
 def process_file(uploaded_file, progress_bar=None):
     uploaded_file.seek(0)
     data = pd.read_csv(uploaded_file, delimiter=';', dtype=str)
@@ -102,15 +115,14 @@ def process_file(uploaded_file, progress_bar=None):
     data = data[list(required_columns)]
     data.dropna(inplace=True)
     
-    # Display number of bundles found.
     st.write(f"File loaded: {len(data)} bundles found.")
     
     os.makedirs(base_folder, exist_ok=True)
     
     mixed_sets_needed = False
     mixed_folder = os.path.join(base_folder, "mixed_sets")
-    error_list = []      # List of tuples (bundle_code, product_code) for missing images
-    bundle_list = []     # List for bundle details
+    error_list = []      # Tuple: (bundle_code, product_code)
+    bundle_list = []     # Dettagli dei bundle
     
     total = len(data)
     for i, (_, row) in enumerate(data.iterrows()):
@@ -118,21 +130,19 @@ def process_file(uploaded_file, progress_bar=None):
         product_codes = [code.strip() for code in row['pzns_in_set'].strip().split(',')]
         num_products = len(product_codes)
         
-        if len(set(product_codes)) == 1:
-            bundle_type = f"bundle of {num_products}"
-        else:
-            bundle_type = "mixed"
+        bundle_type = f"bundle of {num_products}" if len(set(product_codes)) == 1 else "mixed"
         bundle_list.append([bundle_code, ', '.join(product_codes), bundle_type])
         
-        if len(set(product_codes)) == 1:  # Uniform bundle
-            folder_name = f"{base_folder}/bundle_{num_products}"
-            os.makedirs(folder_name, exist_ok=True)
+        if len(set(product_codes)) == 1:  # Bundle uniforme
+            # Ottieni l'immagine e l'estensione usata
             product_code = product_codes[0]
-            # Tenta con estensione "1", poi "10", poi "1-fr" e infine "1-de"
-            image_data = (download_image(product_code, "1")[0] or 
-                          download_image(product_code, "10")[0] or 
-                          download_image(product_code, "1-fr")[0] or 
-                          download_image(product_code, "1-de")[0])
+            image_data, used_ext = get_image_with_fallback(product_code)
+            # Se l'immagine proviene da fallback "1-fr" o "1-de", salva in "cross-country"
+            if used_ext in ["1-fr", "1-de"]:
+                folder_name = os.path.join(base_folder, "cross-country")
+            else:
+                folder_name = os.path.join(base_folder, f"bundle_{num_products}")
+            os.makedirs(folder_name, exist_ok=True)
             if image_data:
                 try:
                     img = Image.open(BytesIO(image_data))
@@ -148,17 +158,20 @@ def process_file(uploaded_file, progress_bar=None):
                     error_list.append((bundle_code, product_code))
             else:
                 error_list.append((bundle_code, product_code))
-        else:  # Mixed bundle
+        else:  # Bundle misto
             mixed_sets_needed = True
             bundle_folder = os.path.join(mixed_folder, bundle_code)
             os.makedirs(bundle_folder, exist_ok=True)
             for product_code in product_codes:
-                image_data = (download_image(product_code, "1")[0] or 
-                              download_image(product_code, "10")[0] or 
-                              download_image(product_code, "1-fr")[0] or 
-                              download_image(product_code, "1-de")[0])
+                image_data, used_ext = get_image_with_fallback(product_code)
                 if image_data:
-                    with open(os.path.join(bundle_folder, f"{product_code}.jpg"), 'wb') as file:
+                    # Per i prodotti che usano fallback, crea una sottocartella "cross-country" all'interno del bundle
+                    if used_ext in ["1-fr", "1-de"]:
+                        prod_folder = os.path.join(bundle_folder, "cross-country")
+                        os.makedirs(prod_folder, exist_ok=True)
+                    else:
+                        prod_folder = bundle_folder
+                    with open(os.path.join(prod_folder, f"{product_code}.jpg"), 'wb') as file:
                         file.write(image_data)
                 else:
                     error_list.append((bundle_code, product_code))
@@ -188,7 +201,6 @@ def process_file(uploaded_file, progress_bar=None):
     with open(bundle_list_csv, "rb") as f:
         bundle_list_data = f.read()
     
-    # Create ZIP file with a unique name containing the session_id
     zip_path = f"bundle_images_{session_id}.zip"
     shutil.make_archive("bundle_images_temp", 'zip', base_folder)
     os.rename("bundle_images_temp.zip", zip_path)
@@ -210,27 +222,24 @@ st.markdown("""
    - **Without Media**
 """)
 
-# Clear Cache Button: clears session state, files and reloads the initial page
 if st.button("🧹 Clear Cache and Reset Data"):
     st.session_state.clear()
     st.cache_data.clear()
     clear_old_data()
     components.html("<script>window.location.href=window.location.origin+window.location.pathname;</script>", height=0)
 
-# Sidebar: App functionalities
 st.sidebar.header("🔹 What This App Does")
 st.sidebar.markdown("""
 - 🤖 **Automated Bundle Creation:** Automatically generate product bundles by downloading and organizing product images.
 - 📄 **CSV Integration:** Upload a CSV file containing detailed bundle and product information.
 - 🔍 **Smart Image Retrieval:** The app makes sure you get the best product image by first checking for the top-quality manufacturer image (p1) and, if that's not available, it gently falls back to the Fotobox image (p10), then tries with regional variations (p1-fr e p1-de).
 - 🖼️ **Dynamic Image Processing:** For uniform bundles, combine images side-by-side (double or triple) with proper resizing and cropping.
-- 📁 **Efficient Organization:** Uniform bundles are saved in dedicated folders, while mixed bundles are sorted into separate directories.
+- 📁 **Efficient Organization:** Uniform bundles are saved in dedicated folders, while mixed bundles are sorted into separate directories. Bundles con immagini regionali are stored in "cross-country".
 - ⚠️ **Error Reporting:** Automatically log any missing images in a separate CSV file for easy troubleshooting.
 - 📦 **Comprehensive Output:** Generate a downloadable ZIP file with all processed images and CSV reports for bundle details and missing images.
 - 👀 **Interactive Preview:** Preview and download individual product images directly from the sidebar.
 """)
 
-# Product Image Preview (Sidebar)
 st.sidebar.header("🔎 Product Image Preview")
 product_code = st.sidebar.text_input("Enter Product Code:")
 selected_extension = st.sidebar.selectbox("Select Image Extension:", [str(i) for i in range(1, 19)])
@@ -255,10 +264,8 @@ if show_image and product_code:
     else:
         st.sidebar.error(f"⚠️ No image found for {product_code} with -p{selected_extension}.jpg")
 
-# Main Content: File Upload & Processing (with progress bar)
 uploaded_file = st.file_uploader("Upload CSV File", type=["csv"], key="file_uploader")
 if uploaded_file:
-    # Separate button to process the CSV
     if st.button("Process CSV"):
         progress_bar = st.progress(0)
         zip_data, missing_images_data, missing_images_df, bundle_list_data = process_file(uploaded_file, progress_bar)
@@ -269,7 +276,6 @@ if uploaded_file:
             st.session_state["missing_images_data"] = missing_images_data
             st.session_state["missing_images_df"] = missing_images_df
 
-# Display the download buttons and missing images info in a single block
 if "zip_data" in st.session_state:
     st.success("**Processing complete! Download your files below.**")
     st.download_button(
