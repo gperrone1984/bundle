@@ -5,6 +5,7 @@ import requests
 import pandas as pd
 import shutil
 import uuid
+import time
 from io import BytesIO
 from PIL import Image, ImageChops
 
@@ -45,7 +46,7 @@ def download_image(product_code, extension):
 def get_image_with_fallback(product_code):
     """
     Tenta in sequenza le estensioni "1", "10", "1-fr" e "1-de".
-    Restituisce una tupla (content, used_ext) oppure (None, None) se non viene trovata nessuna immagine.
+    Restituisce una tupla (content, used_ext) oppure (None, None) se nessuna estensione ha successo.
     """
     for ext in ["1", "10", "1-fr", "1-de"]:
         content, _ = download_image(product_code, ext)
@@ -134,10 +135,9 @@ def process_file(uploaded_file, progress_bar=None):
         bundle_list.append([bundle_code, ', '.join(product_codes), bundle_type])
         
         if len(set(product_codes)) == 1:  # Bundle uniforme
-            # Ottieni l'immagine e l'estensione usata
             product_code = product_codes[0]
             image_data, used_ext = get_image_with_fallback(product_code)
-            # Se l'immagine proviene da fallback "1-fr" o "1-de", salva in "cross-country"
+            # Se l'immagine proviene da "1-fr" o "1-de", salva in "cross-country"
             if used_ext in ["1-fr", "1-de"]:
                 folder_name = os.path.join(base_folder, "cross-country")
             else:
@@ -165,7 +165,7 @@ def process_file(uploaded_file, progress_bar=None):
             for product_code in product_codes:
                 image_data, used_ext = get_image_with_fallback(product_code)
                 if image_data:
-                    # Per i prodotti che usano fallback, crea una sottocartella "cross-country" all'interno del bundle
+                    # Per prodotti con fallback regionale, crea una sottocartella "cross-country" all'interno del bundle
                     if used_ext in ["1-fr", "1-de"]:
                         prod_folder = os.path.join(bundle_folder, "cross-country")
                         os.makedirs(prod_folder, exist_ok=True)
@@ -267,9 +267,12 @@ if show_image and product_code:
 uploaded_file = st.file_uploader("Upload CSV File", type=["csv"], key="file_uploader")
 if uploaded_file:
     if st.button("Process CSV"):
+        start_time = time.time()  # Inizio cronometro
         progress_bar = st.progress(0)
         zip_data, missing_images_data, missing_images_df, bundle_list_data = process_file(uploaded_file, progress_bar)
         progress_bar.empty()
+        elapsed_time = time.time() - start_time
+        st.write(f"Time to download and process images: {elapsed_time:.2f} seconds")
         if zip_data:
             st.session_state["zip_data"] = zip_data
             st.session_state["bundle_list_data"] = bundle_list_data
