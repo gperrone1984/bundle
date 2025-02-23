@@ -227,6 +227,13 @@ st.markdown("""
    - **Without Media**
 """)
 
+# Clear Cache and Reset Data button
+if st.button("🧹 Clear Cache and Reset Data"):
+    st.session_state.clear()
+    st.cache_data.clear()
+    clear_old_data()
+    components.html("<script>window.location.href=window.location.origin+window.location.pathname;</script>", height=0)
+
 # Sidebar: What This App Does
 st.sidebar.header("🔹 What This App Does")
 st.sidebar.markdown("""
@@ -240,7 +247,7 @@ st.sidebar.markdown("""
 - **Interactive Preview:** Preview and download individual product images directly from the sidebar.
 """)
 
-# Sidebar: Product Preview remains in the sidebar
+# Sidebar: Product Image Preview remains in the sidebar
 st.sidebar.header("🔎 Product Image Preview")
 product_code = st.sidebar.text_input("Enter Product Code:")
 selected_extension = st.sidebar.selectbox("Select Image Extension:", [str(i) for i in range(1, 19)], key="sidebar_ext")
