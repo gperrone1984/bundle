@@ -68,14 +68,23 @@ def trim(im):
         return im.crop(bbox)
     return im
 
-def process_double_bundle_image(image):
+def process_double_bundle_image(image, orientation="horizontal"):
     image = trim(image)
     width, height = image.size
-    merged_width = width * 2
-    merged_height = height
-    merged_image = Image.new("RGB", (merged_width, merged_height), (255, 255, 255))
-    merged_image.paste(image, (0, 0))
-    merged_image.paste(image, (width, 0))
+
+    if orientation == "horizontal":
+        merged_width = width * 2
+        merged_height = height
+        merged_image = Image.new("RGB", (merged_width, merged_height), (255, 255, 255))
+        merged_image.paste(image, (0, 0))
+        merged_image.paste(image, (width, 0))
+    else:  # vertical
+        merged_width = width
+        merged_height = height * 2
+        merged_image = Image.new("RGB", (merged_width, merged_height), (255, 255, 255))
+        merged_image.paste(image, (0, 0))
+        merged_image.paste(image, (0, height))
+        
     scale_factor = min(1000 / merged_width, 1000 / merged_height)
     new_size = (int(merged_width * scale_factor), int(merged_height * scale_factor))
     resized_image = merged_image.resize(new_size, Image.LANCZOS)
@@ -85,15 +94,25 @@ def process_double_bundle_image(image):
     final_image.paste(resized_image, (x_offset, y_offset))
     return final_image
 
-def process_triple_bundle_image(image):
+def process_triple_bundle_image(image, orientation="horizontal"):
     image = trim(image)
     width, height = image.size
-    merged_width = width * 3
-    merged_height = height
-    merged_image = Image.new("RGB", (merged_width, merged_height), (255, 255, 255))
-    merged_image.paste(image, (0, 0))
-    merged_image.paste(image, (width, 0))
-    merged_image.paste(image, (width * 2, 0))
+
+    if orientation == "horizontal":
+        merged_width = width * 3
+        merged_height = height
+        merged_image = Image.new("RGB", (merged_width, merged_height), (255, 255, 255))
+        merged_image.paste(image, (0, 0))
+        merged_image.paste(image, (width, 0))
+        merged_image.paste(image, (width * 2, 0))
+    else:  # vertical
+        merged_width = width
+        merged_height = height * 3
+        merged_image = Image.new("RGB", (merged_width, merged_height), (255, 255, 255))
+        merged_image.paste(image, (0, 0))
+        merged_image.paste(image, (0, height))
+        merged_image.paste(image, (0, height * 2))
+    
     scale_factor = min(1000 / merged_width, 1000 / merged_height)
     new_size = (int(merged_width * scale_factor), int(merged_height * scale_factor))
     resized_image = merged_image.resize(new_size, Image.LANCZOS)
@@ -104,7 +123,7 @@ def process_triple_bundle_image(image):
     return final_image
 
 # ---------------------- Main Processing Function ----------------------
-def process_file(uploaded_file, progress_bar=None):
+def process_file(uploaded_file, progress_bar=None, orientation="horizontal"):
     uploaded_file.seek(0)
     data = pd.read_csv(uploaded_file, delimiter=';', dtype=str)
     
@@ -149,9 +168,9 @@ def process_file(uploaded_file, progress_bar=None):
                 try:
                     img = Image.open(BytesIO(image_data))
                     if num_products == 2:
-                        final_img = process_double_bundle_image(img)
+                        final_img = process_double_bundle_image(img, orientation=orientation)
                     elif num_products == 3:
-                        final_img = process_triple_bundle_image(img)
+                        final_img = process_triple_bundle_image(img, orientation=orientation)
                     else:
                         final_img = img
                     final_img.save(os.path.join(folder_name, f"{bundle_code}-h1.jpg"), "JPEG", quality=100)
@@ -242,14 +261,16 @@ st.sidebar.markdown("""
 - 🔍 **Smart Image Retrieval:** Fetch high-quality images (p1, then p10).
 - 🌐 **Language Selection:** You can select the language for cross-country images.
 - 🎨 **Dynamic Processing:** Combine images (double/triple) with proper resizing.
+- ↔️ **Orientation Choice:** Scegli se affiancare le immagini orizzontalmente o verticalmente.
 - 📁 **Efficient Organization:** Save uniform bundles in dedicated folders and mixed bundles in separate directories. Language specific images go to "cross-country".
 - 🚨 **Error Logging:** Missing images are logged in a CSV.
 - 📦 **Download:** Get a ZIP with all processed images and reports.
 - 👀 **Interactive Preview:** Preview and download individual product images from the sidebar.
 """, unsafe_allow_html=True)
 
-# Sidebar: Product Image Preview
-st.sidebar.header("🔎 Product Image Preview")
+# Sidebar: Orientation and Product Image Preview
+st.sidebar.header("🔎 Product Image Preview & Orientation")
+orientation = st.sidebar.selectbox("Seleziona Orientamento:", ["horizontal", "vertical"])
 product_code = st.sidebar.text_input("Enter Product Code:")
 selected_extension = st.sidebar.selectbox("Select Image Extension:", [str(i) for i in range(1, 19)], key="sidebar_ext")
 with st.sidebar:
@@ -263,7 +284,9 @@ if show_image and product_code:
             image_data, image_url = download_image(product_code, selected_extension)
     if image_data:
         image = Image.open(BytesIO(image_data))
-        st.sidebar.image(image, caption=f"Product: {product_code} (p{selected_extension})", use_container_width=True)
+        # Esempio: se vuoi visualizzare un bundle doppio in anteprima con l'orientamento scelto
+        preview_img = process_double_bundle_image(image, orientation=orientation)
+        st.sidebar.image(preview_img, caption=f"Anteprima ({orientation}) - {product_code}", use_column_width=True)
         st.sidebar.download_button(
             label="📥 Download Image",
             data=image_data,
@@ -281,7 +304,7 @@ if uploaded_file:
         if st.button("Process CSV"):
             start_time = time.time()  # Start timer
             progress_bar = st.progress(0)
-            zip_data, missing_images_data, missing_images_df, bundle_list_data = process_file(uploaded_file, progress_bar)
+            zip_data, missing_images_data, missing_images_df, bundle_list_data = process_file(uploaded_file, progress_bar, orientation=orientation)
             progress_bar.empty()
             elapsed_time = time.time() - start_time
             minutes = int(elapsed_time // 60)
