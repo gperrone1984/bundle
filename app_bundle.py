@@ -230,9 +230,8 @@ st.markdown("""
    - **Without Media**
 """)
 
-# Display the country selection box after the file is loaded
-uploaded_file = st.file_uploader("Upload CSV File", type=["csv"], key="file_uploader")
-if uploaded_file:
+# Sposta il box di fallback nella sidebar, sotto il menu dell'app
+with st.sidebar:
     st.markdown("<h5 style='font-size:16px;'>Select country for cross-country photos</h5>", unsafe_allow_html=True)
     cols = st.columns(2, gap="small")
     with cols[0]:
@@ -243,7 +242,34 @@ if uploaded_file:
         if st.button("DE", key="de_button"):
             st.session_state["fallback_ext"] = "1-de"
             st.info("Fallback set to 1-de")
-    
+
+# Sidebar: Product preview (già presente)
+st.sidebar.header("🔎 Product Image Preview")
+product_code = st.sidebar.text_input("Enter Product Code:")
+selected_extension = st.sidebar.selectbox("Select Image Extension:", [str(i) for i in range(1, 19)])
+with st.sidebar:
+    col_button, col_spinner = st.columns([2, 1])
+    show_image = col_button.button("Show Image")
+    spinner_placeholder = col_spinner.empty()
+
+if show_image and product_code:
+    with spinner_placeholder:
+        with st.spinner("Processing..."):
+            image_data, image_url = download_image(product_code, selected_extension)
+    if image_data:
+        image = Image.open(BytesIO(image_data))
+        st.sidebar.image(image, caption=f"Product: {product_code} (p{selected_extension})", use_container_width=True)
+        st.sidebar.download_button(
+            label="📥 Download Image",
+            data=image_data,
+            file_name=f"{product_code}-p{selected_extension}.jpg",
+            mime="image/jpeg"
+        )
+    else:
+        st.sidebar.error(f"⚠️ No image found for {product_code} with -p{selected_extension}.jpg")
+
+uploaded_file = st.file_uploader("Upload CSV File", type=["csv"], key="file_uploader")
+if uploaded_file:
     if st.button("Process CSV"):
         start_time = time.time()  # Start timer
         progress_bar = st.progress(0)
