@@ -239,10 +239,10 @@ st.sidebar.header("🔹 What This App Does")
 st.sidebar.markdown("""
 - 🤖 **Automated Bundle Creation:** Automatically create product bundles by downloading and organizing images.
 - 📄 **CSV Upload:** Import a CSV report with product info.
-- 🔍 **Smart Image Retrieval:** Fetch high-quality images (p1, then p10). If missing, use the selected fallback (FR → 1-fr, DE → 1-de).
+- 🔍 **Smart Image Retrieval:** Fetch high-quality images (p1, then p10).
 - 🌐 **Language Selection:** You can select the language for cross-country images.
 - 🎨 **Dynamic Processing:** Combine images (double/triple) with proper resizing.
-- 📁 **Efficient Organization:** Save uniform bundles in dedicated folders and mixed bundles in separate directories. Regional images go to "cross-country".
+- 📁 **Efficient Organization:** Save uniform bundles in dedicated folders and mixed bundles in separate directories. Language specific images go to "cross-country".
 - 🚨 **Error Logging:** Missing images are logged in a CSV.
 - 📦 **Download:** Get a ZIP with all processed images and reports.
 - 👀 **Interactive Preview:** Preview and download individual product images from the sidebar.
