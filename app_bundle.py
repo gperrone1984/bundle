@@ -8,7 +8,7 @@ import uuid
 import time
 from io import BytesIO
 from PIL import Image, ImageChops
-from cryptography.fernet import Fernet  # Importa il modulo per la cifratura
+from cryptography.fernet import Fernet  # Import the module for encryption
 
 # ----- Create a unique session ID and corresponding base folder for the session -----
 if "session_id" not in st.session_state:
@@ -16,7 +16,7 @@ if "session_id" not in st.session_state:
 session_id = st.session_state["session_id"]
 base_folder = f"bundle_images_{session_id}"
 
-# ----- Automatic cleaning at app start: remove previous files in the session folder -----
+# ----- Automatically clean up previous session files on app start -----
 def clear_old_data():
     if os.path.exists(base_folder):
         shutil.rmtree(base_folder)
@@ -35,6 +35,7 @@ clear_old_data()  # Clean session-specific files at startup
 
 # ---------------------- Helper Functions ----------------------
 def download_image(product_code, extension):
+    # If the product code starts with '1' or '0', prefix it with 'D'
     if product_code.startswith(('1', '0')):
         product_code = f"D{product_code}"
     url = f"https://cdn.shop-apotheke.com/images/{product_code}-p{extension}.jpg"
@@ -45,10 +46,10 @@ def download_image(product_code, extension):
 
 def get_image_with_fallback(product_code):
     """
-    Tries first extension "1", then "10". 
-    If these are not found and if the user has selected a fallback (FR or DE),
-    it then tries that extension.
-    Returns a tuple (content, used_ext) or (None, None).
+    Attempts to download an image using extension "1" first, then "10". 
+    If not found, and if the user has selected a fallback extension (e.g., FR or DE),
+    it will try that extension.
+    Returns a tuple (content, used_extension) or (None, None) if no image is found.
     """
     for ext in ["1", "10"]:
         content, _ = download_image(product_code, ext)
@@ -62,6 +63,9 @@ def get_image_with_fallback(product_code):
     return None, None
 
 def trim(im):
+    """
+    Trims the white borders from the image.
+    """
     bg = Image.new(im.mode, im.size, (255, 255, 255))
     diff = ImageChops.difference(im, bg)
     bbox = diff.getbbox()
@@ -70,6 +74,12 @@ def trim(im):
     return im
 
 def process_double_bundle_image(image):
+    """
+    Processes a double bundle image by:
+    - Trimming white borders.
+    - Creating a merged image that places two copies side-by-side.
+    - Resizing the merged image to fit within a 1000x1000 canvas.
+    """
     image = trim(image)
     width, height = image.size
     merged_width = width * 2
@@ -87,6 +97,12 @@ def process_double_bundle_image(image):
     return final_image
 
 def process_triple_bundle_image(image):
+    """
+    Processes a triple bundle image by:
+    - Trimming white borders.
+    - Creating a merged image that places three copies side-by-side.
+    - Resizing the merged image to fit within a 1000x1000 canvas.
+    """
     image = trim(image)
     width, height = image.size
     merged_width = width * 3
@@ -106,26 +122,26 @@ def process_triple_bundle_image(image):
 
 # ---------------------- Main Processing Function ----------------------
 def process_file(uploaded_file, progress_bar=None):
-    # --------- Aggiunta della protezione criptografica ---------
-    # Genera (o recupera) una chiave di cifratura per la sessione
+    # --------- Add encryption protection ---------
+    # Generate (or retrieve) an encryption key for the session
     if "encryption_key" not in st.session_state:
         st.session_state["encryption_key"] = Fernet.generate_key()
     key = st.session_state["encryption_key"]
     f = Fernet(key)
     
-    # Legge il file CSV caricato come bytes
+    # Read the uploaded CSV file as bytes
     file_bytes = uploaded_file.read()
     
-    # Cripta il contenuto del file subito dopo il caricamento
+    # Encrypt the file content immediately after uploading
     encrypted_bytes = f.encrypt(file_bytes)
     
-    # Decripta il contenuto per l'elaborazione
+    # Decrypt the content for processing
     decrypted_bytes = f.decrypt(encrypted_bytes)
     
-    # Carica il CSV in un DataFrame pandas dal contenuto decriptato
+    # Load the CSV into a pandas DataFrame from the decrypted content
     csv_file = BytesIO(decrypted_bytes)
     data = pd.read_csv(csv_file, delimiter=';', dtype=str)
-    # --------- Fine protezione criptografica ---------
+    # --------- End encryption protection ---------
 
     required_columns = {'sku', 'pzns_in_set'}
     missing_columns = required_columns - set(data.columns)
@@ -137,6 +153,7 @@ def process_file(uploaded_file, progress_bar=None):
         st.error("The CSV file is empty!")
         return None, None, None, None
 
+    # Keep only the required columns and drop rows with missing values
     data = data[list(required_columns)]
     data.dropna(inplace=True)
 
@@ -146,7 +163,7 @@ def process_file(uploaded_file, progress_bar=None):
     mixed_sets_needed = False
     mixed_folder = os.path.join(base_folder, "mixed_sets")
     error_list = []      # List of tuples: (bundle_code, product_code)
-    bundle_list = []     # Details: bundle code, pzns list, bundle type, cross-country flag
+    bundle_list = []     # List with details: bundle code, product codes list, bundle type, cross-country flag
 
     total = len(data)
     for i, (_, row) in enumerate(data.iterrows()):
@@ -241,7 +258,7 @@ st.markdown("""
 1. Create a **Quick Report** in Akeneo containing the list of products.
 2. Select the following options:
    - File Type: **CSV**
-   - **All Attributes** or **Grid Context** (for Grid Context select **ID** and **PZN included in the set**)
+   - **All Attributes** or **Grid Context** (for Grid Context, select **ID** and **PZN included in the set**)
    - **With Codes**
    - **Without Media**
 """)
@@ -253,15 +270,15 @@ if st.button("🧹 Clear Cache and Reset Data"):
     clear_old_data()
     components.html("<script>window.location.href=window.location.origin+window.location.pathname;</script>", height=0)
 
-# Sidebar: What This App Does (Semplified with icons)
+# Sidebar: What This App Does (Simplified with icons)
 st.sidebar.header("🔹 What This App Does")
 st.sidebar.markdown("""
-- 🤖 **Automated Bundle Creation:** Automatically create product bundles by downloading and organizing images.
+- 🤖 **Automated Bundle Creation:** Automatically create producta bundles by downloading and organizing images.
 - 📄 **CSV Upload:** Import a CSV report with product info.
-- 🔍 **Smart Image Retrieval:** Fetch high-quality images (p1, then p10).
+- 🔍 **Smart Image Retrieval:** Fetch high-quality images (first p1, then p10).
 - 🌐 **Language Selection:** You can select the language for cross-country images.
 - 🎨 **Dynamic Processing:** Combine images (double/triple) with proper resizing.
-- 📁 **Efficient Organization:** Save uniform bundles in dedicated folders and mixed bundles in separate directories. Language specific images go to "cross-country".
+- 📁 **Efficient Organization:** Save uniform bundles in dedicated folders and mixed bundles in separate directories. Language-specific images go to "cross-country".
 - 🚨 **Error Logging:** Missing images are logged in a CSV.
 - 📦 **Download:** Get a ZIP with all processed images and reports.
 - 👀 **Interactive Preview:** Preview and download individual product images from the sidebar.
