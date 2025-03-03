@@ -8,6 +8,7 @@ import uuid
 import time
 from io import BytesIO
 from PIL import Image, ImageChops
+from cryptography.fernet import Fernet  # Importa il modulo per la cifratura
 
 # ----- Create a unique session ID and corresponding base folder for the session -----
 if "session_id" not in st.session_state:
@@ -105,30 +106,48 @@ def process_triple_bundle_image(image):
 
 # ---------------------- Main Processing Function ----------------------
 def process_file(uploaded_file, progress_bar=None):
-    uploaded_file.seek(0)
-    data = pd.read_csv(uploaded_file, delimiter=';', dtype=str)
+    # --------- Aggiunta della protezione criptografica ---------
+    # Genera (o recupera) una chiave di cifratura per la sessione
+    if "encryption_key" not in st.session_state:
+        st.session_state["encryption_key"] = Fernet.generate_key()
+    key = st.session_state["encryption_key"]
+    f = Fernet(key)
     
+    # Legge il file CSV caricato come bytes
+    file_bytes = uploaded_file.read()
+    
+    # Cripta il contenuto del file subito dopo il caricamento
+    encrypted_bytes = f.encrypt(file_bytes)
+    
+    # Decripta il contenuto per l'elaborazione
+    decrypted_bytes = f.decrypt(encrypted_bytes)
+    
+    # Carica il CSV in un DataFrame pandas dal contenuto decriptato
+    csv_file = BytesIO(decrypted_bytes)
+    data = pd.read_csv(csv_file, delimiter=';', dtype=str)
+    # --------- Fine protezione criptografica ---------
+
     required_columns = {'sku', 'pzns_in_set'}
     missing_columns = required_columns - set(data.columns)
     if missing_columns:
         st.error(f"Missing required columns: {', '.join(missing_columns)}")
         return None, None, None, None
-    
+
     if data.empty:
         st.error("The CSV file is empty!")
         return None, None, None, None
-    
+
     data = data[list(required_columns)]
     data.dropna(inplace=True)
-    
+
     st.write(f"File loaded: {len(data)} bundles found.")
     os.makedirs(base_folder, exist_ok=True)
-    
+
     mixed_sets_needed = False
     mixed_folder = os.path.join(base_folder, "mixed_sets")
     error_list = []      # List of tuples: (bundle_code, product_code)
     bundle_list = []     # Details: bundle code, pzns list, bundle type, cross-country flag
-    
+
     total = len(data)
     for i, (_, row) in enumerate(data.iterrows()):
         bundle_code = row['sku'].strip()
@@ -137,7 +156,7 @@ def process_file(uploaded_file, progress_bar=None):
         is_uniform = (len(set(product_codes)) == 1)
         bundle_type = f"bundle of {num_products}" if is_uniform else "mixed"
         bundle_cross_country = False
-        
+
         if is_uniform:
             product_code = product_codes[0]
             image_data, used_ext = get_image_with_fallback(product_code)
@@ -178,15 +197,15 @@ def process_file(uploaded_file, progress_bar=None):
                         file.write(image_data)
                 else:
                     error_list.append((bundle_code, product_code))
-        
+
         if progress_bar is not None:
             progress_bar.progress((i + 1) / total)
-        
+
         bundle_list.append([bundle_code, ', '.join(product_codes), bundle_type, "Yes" if bundle_cross_country else "No"])
-    
+
     if not mixed_sets_needed and os.path.exists(mixed_folder):
         shutil.rmtree(mixed_folder)
-    
+
     if error_list:
         missing_images_df = pd.DataFrame(error_list, columns=["PZN Bundle", "PZN with image missing"])
         missing_images_df = missing_images_df.groupby("PZN Bundle", as_index=False).agg({
@@ -194,18 +213,18 @@ def process_file(uploaded_file, progress_bar=None):
         })
     else:
         missing_images_df = pd.DataFrame(columns=["PZN Bundle", "PZN with image missing"])
-    
+
     missing_images_csv = "missing_images.csv"
     missing_images_df.to_csv(missing_images_csv, index=False, sep=';')
-    with open(missing_images_csv, "rb") as f:
-        missing_images_data = f.read()
-    
+    with open(missing_images_csv, "rb") as f_csv:
+        missing_images_data = f_csv.read()
+
     bundle_list_df = pd.DataFrame(bundle_list, columns=["sku", "pzns_in_set", "bundle type", "cross-country"])
     bundle_list_csv = "bundle_list.csv"
     bundle_list_df.to_csv(bundle_list_csv, index=False, sep=';')
-    with open(bundle_list_csv, "rb") as f:
-        bundle_list_data = f.read()
-    
+    with open(bundle_list_csv, "rb") as f_csv:
+        bundle_list_data = f_csv.read()
+
     zip_path = f"bundle_images_{session_id}.zip"
     shutil.make_archive("bundle_images_temp", 'zip', base_folder)
     os.rename("bundle_images_temp.zip", zip_path)
