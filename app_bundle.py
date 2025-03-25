@@ -79,7 +79,8 @@ def process_double_bundle_image(image, layout="horizontal"):
     - Trimming white borders.
     - Creating a merged image that places two copies either side-by-side (horizontal)
       or one above the other (vertical). If layout is "automatic", the program 
-      chooses based on the image dimensions (width vs. height).
+      chooses based on the image dimensions: vertical if the image is taller than wide, 
+      horizontal otherwise.
     - Resizing the merged image to fit within a 1000x1000 canvas.
     """
     image = trim(image)
@@ -87,7 +88,7 @@ def process_double_bundle_image(image, layout="horizontal"):
 
     # Determine layout if set to automatic
     if layout.lower() == "automatic":
-        chosen_layout = "horizontal" if width >= height else "vertical"
+        chosen_layout = "vertical" if height > width else "horizontal"
     else:
         chosen_layout = layout.lower()
 
@@ -126,7 +127,8 @@ def process_triple_bundle_image(image, layout="horizontal"):
     - Trimming white borders.
     - Creating a merged image that places three copies either side-by-side (horizontal)
       or stacked vertically (vertical). If layout is "automatic", the program 
-      chooses based on the image dimensions (width vs. height).
+      chooses based on the image dimensions: vertical if the image is taller than wide, 
+      horizontal otherwise.
     - Resizing the merged image to fit within a 1000x1000 canvas.
     """
     image = trim(image)
@@ -134,7 +136,7 @@ def process_triple_bundle_image(image, layout="horizontal"):
 
     # Determine layout if set to automatic
     if layout.lower() == "automatic":
-        chosen_layout = "horizontal" if width >= height else "vertical"
+        chosen_layout = "vertical" if height > width else "horizontal"
     else:
         chosen_layout = layout.lower()
 
