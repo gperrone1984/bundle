@@ -73,20 +73,36 @@ def trim(im):
         return im.crop(bbox)
     return im
 
-def process_double_bundle_image(image):
+def process_double_bundle_image(image, layout="horizontal"):
     """
     Processes a double bundle image by:
     - Trimming white borders.
-    - Creating a merged image that places two copies side-by-side.
+    - Creating a merged image that places two copies either side-by-side (horizontal)
+      or one above the other (vertical).
     - Resizing the merged image to fit within a 1000x1000 canvas.
     """
     image = trim(image)
     width, height = image.size
-    merged_width = width * 2
-    merged_height = height
-    merged_image = Image.new("RGB", (merged_width, merged_height), (255, 255, 255))
-    merged_image.paste(image, (0, 0))
-    merged_image.paste(image, (width, 0))
+    if layout.lower() == "horizontal":
+        merged_width = width * 2
+        merged_height = height
+        merged_image = Image.new("RGB", (merged_width, merged_height), (255, 255, 255))
+        merged_image.paste(image, (0, 0))
+        merged_image.paste(image, (width, 0))
+    elif layout.lower() == "vertical":
+        merged_width = width
+        merged_height = height * 2
+        merged_image = Image.new("RGB", (merged_width, merged_height), (255, 255, 255))
+        merged_image.paste(image, (0, 0))
+        merged_image.paste(image, (0, height))
+    else:
+        # Default to horizontal layout if unrecognized
+        merged_width = width * 2
+        merged_height = height
+        merged_image = Image.new("RGB", (merged_width, merged_height), (255, 255, 255))
+        merged_image.paste(image, (0, 0))
+        merged_image.paste(image, (width, 0))
+    
     scale_factor = min(1000 / merged_width, 1000 / merged_height)
     new_size = (int(merged_width * scale_factor), int(merged_height * scale_factor))
     resized_image = merged_image.resize(new_size, Image.LANCZOS)
@@ -96,21 +112,39 @@ def process_double_bundle_image(image):
     final_image.paste(resized_image, (x_offset, y_offset))
     return final_image
 
-def process_triple_bundle_image(image):
+def process_triple_bundle_image(image, layout="horizontal"):
     """
     Processes a triple bundle image by:
     - Trimming white borders.
-    - Creating a merged image that places three copies side-by-side.
+    - Creating a merged image that places three copies either side-by-side (horizontal)
+      or stacked vertically (vertical).
     - Resizing the merged image to fit within a 1000x1000 canvas.
     """
     image = trim(image)
     width, height = image.size
-    merged_width = width * 3
-    merged_height = height
-    merged_image = Image.new("RGB", (merged_width, merged_height), (255, 255, 255))
-    merged_image.paste(image, (0, 0))
-    merged_image.paste(image, (width, 0))
-    merged_image.paste(image, (width * 2, 0))
+    if layout.lower() == "horizontal":
+        merged_width = width * 3
+        merged_height = height
+        merged_image = Image.new("RGB", (merged_width, merged_height), (255, 255, 255))
+        merged_image.paste(image, (0, 0))
+        merged_image.paste(image, (width, 0))
+        merged_image.paste(image, (width * 2, 0))
+    elif layout.lower() == "vertical":
+        merged_width = width
+        merged_height = height * 3
+        merged_image = Image.new("RGB", (merged_width, merged_height), (255, 255, 255))
+        merged_image.paste(image, (0, 0))
+        merged_image.paste(image, (0, height))
+        merged_image.paste(image, (0, height * 2))
+    else:
+        # Default to horizontal layout if unrecognized
+        merged_width = width * 3
+        merged_height = height
+        merged_image = Image.new("RGB", (merged_width, merged_height), (255, 255, 255))
+        merged_image.paste(image, (0, 0))
+        merged_image.paste(image, (width, 0))
+        merged_image.paste(image, (width * 2, 0))
+    
     scale_factor = min(1000 / merged_width, 1000 / merged_height)
     new_size = (int(merged_width * scale_factor), int(merged_height * scale_factor))
     resized_image = merged_image.resize(new_size, Image.LANCZOS)
@@ -121,7 +155,7 @@ def process_triple_bundle_image(image):
     return final_image
 
 # ---------------------- Main Processing Function ----------------------
-def process_file(uploaded_file, progress_bar=None):
+def process_file(uploaded_file, progress_bar=None, layout="horizontal"):
     # --------- Add encryption protection ---------
     # Generate (or retrieve) an encryption key for the session
     if "encryption_key" not in st.session_state:
@@ -185,9 +219,9 @@ def process_file(uploaded_file, progress_bar=None):
                 try:
                     img = Image.open(BytesIO(image_data))
                     if num_products == 2:
-                        final_img = process_double_bundle_image(img)
+                        final_img = process_double_bundle_image(img, layout)
                     elif num_products == 3:
-                        final_img = process_triple_bundle_image(img)
+                        final_img = process_triple_bundle_image(img, layout)
                     else:
                         final_img = img
                     final_img.save(os.path.join(folder_name, f"{bundle_code}-h1.jpg"), "JPEG", quality=100)
@@ -254,13 +288,13 @@ def process_file(uploaded_file, progress_bar=None):
 st.title("PDM Bundle Image Creator")
 
 st.markdown("""
-📌 **Instructions:**
-1. Create a **Quick Report** in Akeneo containing the list of products.
+**Instructions:**
+1. Create a Quick Report in Akeneo containing the list of products.
 2. Select the following options:
-   - File Type: **CSV**
-   - **All Attributes** or **Grid Context** (for Grid Context, select **ID** and **PZN included in the set**)
-   - **With Codes**
-   - **Without Media**
+   - File Type: CSV
+   - All Attributes or Grid Context (for Grid Context, select ID and PZN included in the set)
+   - With Codes
+   - Without Media
 """)
 
 # Clear Cache and Reset Data button
@@ -270,22 +304,22 @@ if st.button("🧹 Clear Cache and Reset Data"):
     clear_old_data()
     components.html("<script>window.location.href=window.location.origin+window.location.pathname;</script>", height=0)
 
-# Sidebar: What This App Does (Simplified with icons)
-st.sidebar.header("🔹 What This App Does")
+# Sidebar: What This App Does
+st.sidebar.header("What This App Does")
 st.sidebar.markdown("""
-- 🤖 **Automated Bundle Creation:** Automatically create product bundles by downloading and organizing images.
-- 📄 **CSV Upload:** Import a CSV report with product info.
-- 🔍 **Smart Image Retrieval:** Fetch high-quality images (first p1, then p10).
-- 🌐 **Language Selection:** You can select the language for cross-country images.
-- 🎨 **Dynamic Processing:** Combine images (double/triple) with proper resizing.
-- 📁 **Efficient Organization:** Save uniform bundles in dedicated folders and mixed bundles in separate directories. Language-specific images go to "cross-country".
-- 🚨 **Error Logging:** Missing images are logged in a CSV.
-- 📦 **Download:** Get a ZIP with all processed images and reports.
-- 👀 **Interactive Preview:** Preview and download individual product images from the sidebar.
+- **Automated Bundle Creation:** Automatically create product bundles by downloading and organizing images.
+- **CSV Upload:** Import a CSV report with product info.
+- **Smart Image Retrieval:** Fetch high-quality images (first p1, then p10).
+- **Language Selection:** Choose the language for cross-country photos.
+- **Dynamic Processing:** Combine images (double/triple) with proper resizing.
+- **Efficient Organization:** Save uniform bundles in dedicated folders and mixed bundles in separate directories. Language-specific images go to "cross-country".
+- **Error Logging:** Missing images are logged in a CSV.
+- **Download:** Get a ZIP with all processed images and reports.
+- **Interactive Preview:** Preview and download individual product images from the sidebar.
 """, unsafe_allow_html=True)
 
 # Sidebar: Product Image Preview
-st.sidebar.header("🔎 Product Image Preview")
+st.sidebar.header("Product Image Preview")
 product_code = st.sidebar.text_input("Enter Product Code:")
 selected_extension = st.sidebar.selectbox("Select Image Extension:", [str(i) for i in range(1, 19)], key="sidebar_ext")
 with st.sidebar:
@@ -301,27 +335,29 @@ if show_image and product_code:
         image = Image.open(BytesIO(image_data))
         st.sidebar.image(image, caption=f"Product: {product_code} (p{selected_extension})", use_container_width=True)
         st.sidebar.download_button(
-            label="📥 Download Image",
+            label="Download Image",
             data=image_data,
             file_name=f"{product_code}-p{selected_extension}.jpg",
             mime="image/jpeg"
         )
     else:
-        st.sidebar.error(f"⚠️ No image found for {product_code} with -p{selected_extension}.jpg")
+        st.sidebar.error(f"No image found for {product_code} with -p{selected_extension}.jpg")
 
-# Main Content: File Uploader and Process CSV with fallback language selectbox
+# Main Content: File Uploader, fallback language, and layout selection
 uploaded_file = st.file_uploader("Upload CSV File", type=["csv"], key="file_uploader")
 if uploaded_file:
-    fallback_language = st.selectbox("Scegli la lingua per le foto cross-country:", options=["Nessuna", "FR", "DE", "NL", "BE"], index=0)
-    if fallback_language != "Nessuna":
+    fallback_language = st.selectbox("Choose the language for cross-country photos:", options=["None", "FR", "DE", "NL", "BE"], index=0)
+    if fallback_language != "None":
         st.session_state["fallback_ext"] = f"1-{fallback_language.lower()}"
     else:
         st.session_state["fallback_ext"] = None
 
+    layout_choice = st.selectbox("Choose bundle layout:", options=["Horizontal", "Vertical"], index=0)
+
     if st.button("Process CSV"):
         start_time = time.time()  # Start timer
         progress_bar = st.progress(0)
-        zip_data, missing_images_data, missing_images_df, bundle_list_data = process_file(uploaded_file, progress_bar)
+        zip_data, missing_images_data, missing_images_df, bundle_list_data = process_file(uploaded_file, progress_bar, layout=layout_choice)
         progress_bar.empty()
         elapsed_time = time.time() - start_time
         minutes = int(elapsed_time // 60)
@@ -334,24 +370,24 @@ if uploaded_file:
             st.session_state["missing_images_df"] = missing_images_df
 
 if "zip_data" in st.session_state:
-    st.success("**Processing complete! Download your files below.**")
+    st.success("Processing complete! Download your files below.")
     st.download_button(
-        label="🖼️ Download Bundle Image",
+        label="Download Bundle Image",
         data=st.session_state["zip_data"],
         file_name=f"bundle_images_{session_id}.zip",
         mime="application/zip"
     )
     st.download_button(
-        label="📋 Download Bundle List",
+        label="Download Bundle List",
         data=st.session_state["bundle_list_data"],
         file_name="bundle_list.csv",
         mime="text/csv"
     )
     if st.session_state["missing_images_df"] is not None and not st.session_state["missing_images_df"].empty:
-        st.warning("**Some images were not found:**")
+        st.warning("Some images were not found:")
         st.dataframe(st.session_state["missing_images_df"].reset_index(drop=True))
         st.download_button(
-            label="⚠️ Download Missing Images CSV",
+            label="Download Missing Images CSV",
             data=st.session_state["missing_images_data"],
             file_name="missing_images.csv",
             mime="text/csv"
