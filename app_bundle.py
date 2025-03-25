@@ -47,9 +47,8 @@ def download_image(product_code, extension):
 def get_image_with_fallback(product_code):
     """
     Attempts to download an image using extension "1" first, then "10". 
-    If not found, and if the user has selected a fallback extension (e.g., FR or DE),
-    it will try that extension.
-    Returns a tuple (content, used_extension) or (None, None) if no image is found.
+    If not found, and if the user has selected a fallback extension 
+    (e.g., FR, DE, NL, or BE), it will try that extension.
     """
     for ext in ["1", "10"]:
         content, _ = download_image(product_code, ext)
@@ -336,6 +335,12 @@ if uploaded_file:
     with cols[3]:
         if st.button("DE", key="de_button_main"):
             st.session_state["fallback_ext"] = "1-de"
+    with cols[4]:
+    if st.button("NL", key="nl_button_main"):
+        st.session_state["fallback_ext"] = "1-nl"
+with cols[5]:
+    if st.button("BE", key="be_button_main"):
+        st.session_state["fallback_ext"] = "1-be"
 
 if "zip_data" in st.session_state:
     st.success("**Processing complete! Download your files below.**")
