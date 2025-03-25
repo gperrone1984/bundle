@@ -49,6 +49,7 @@ def get_image_with_fallback(product_code):
     Attempts to download an image using extension "1" first, then "10". 
     If not found, and if the user has selected a fallback extension 
     (e.g., FR, DE, NL, or BE), it will try that extension.
+    Returns a tuple (content, used_extension) or (None, None) if no image is found.
     """
     for ext in ["1", "10"]:
         content, _ = download_image(product_code, ext)
@@ -176,7 +177,7 @@ def process_file(uploaded_file, progress_bar=None):
         if is_uniform:
             product_code = product_codes[0]
             image_data, used_ext = get_image_with_fallback(product_code)
-            if used_ext in ["1-fr", "1-de"]:
+            if used_ext in ["1-fr", "1-de", "1-nl", "1-be"]:
                 bundle_cross_country = True
             folder_name = os.path.join(base_folder, "cross-country") if bundle_cross_country else os.path.join(base_folder, f"bundle_{num_products}")
             os.makedirs(folder_name, exist_ok=True)
@@ -201,10 +202,10 @@ def process_file(uploaded_file, progress_bar=None):
             os.makedirs(bundle_folder, exist_ok=True)
             for product_code in product_codes:
                 image_data, used_ext = get_image_with_fallback(product_code)
-                if used_ext in ["1-fr", "1-de"]:
+                if used_ext in ["1-fr", "1-de", "1-nl", "1-be"]:
                     bundle_cross_country = True
                 if image_data:
-                    if used_ext in ["1-fr", "1-de"]:
+                    if used_ext in ["1-fr", "1-de", "1-nl", "1-be"]:
                         prod_folder = os.path.join(bundle_folder, "cross-country")
                         os.makedirs(prod_folder, exist_ok=True)
                     else:
@@ -272,7 +273,7 @@ if st.button("🧹 Clear Cache and Reset Data"):
 # Sidebar: What This App Does (Simplified with icons)
 st.sidebar.header("🔹 What This App Does")
 st.sidebar.markdown("""
-- 🤖 **Automated Bundle Creation:** Automatically create producta bundles by downloading and organizing images.
+- 🤖 **Automated Bundle Creation:** Automatically create product bundles by downloading and organizing images.
 - 📄 **CSV Upload:** Import a CSV report with product info.
 - 🔍 **Smart Image Retrieval:** Fetch high-quality images (first p1, then p10).
 - 🌐 **Language Selection:** You can select the language for cross-country images.
@@ -308,39 +309,29 @@ if show_image and product_code:
     else:
         st.sidebar.error(f"⚠️ No image found for {product_code} with -p{selected_extension}.jpg")
 
-# Main Content: File Uploader and Process CSV with FR/DE buttons and cross-country label
+# Main Content: File Uploader and Process CSV with fallback language selectbox
 uploaded_file = st.file_uploader("Upload CSV File", type=["csv"], key="file_uploader")
 if uploaded_file:
-    cols = st.columns([2, 1, 1, 1])
-    with cols[0]:
-        if st.button("Process CSV"):
-            start_time = time.time()  # Start timer
-            progress_bar = st.progress(0)
-            zip_data, missing_images_data, missing_images_df, bundle_list_data = process_file(uploaded_file, progress_bar)
-            progress_bar.empty()
-            elapsed_time = time.time() - start_time
-            minutes = int(elapsed_time // 60)
-            seconds = int(elapsed_time % 60)
-            st.write(f"Time to download and process images: {minutes} minutes and {seconds} seconds")
-            if zip_data:
-                st.session_state["zip_data"] = zip_data
-                st.session_state["bundle_list_data"] = bundle_list_data
-                st.session_state["missing_images_data"] = missing_images_data
-                st.session_state["missing_images_df"] = missing_images_df
-    with cols[1]:
-        st.markdown("**Cross-country photos:**")
-    with cols[2]:
-        if st.button("FR", key="fr_button_main"):
-            st.session_state["fallback_ext"] = "1-fr"
-    with cols[3]:
-        if st.button("DE", key="de_button_main"):
-            st.session_state["fallback_ext"] = "1-de"
-    with cols[4]:
-    if st.button("NL", key="nl_button_main"):
-        st.session_state["fallback_ext"] = "1-nl"
-with cols[5]:
-    if st.button("BE", key="be_button_main"):
-        st.session_state["fallback_ext"] = "1-be"
+    fallback_language = st.selectbox("Scegli la lingua per le foto cross-country:", options=["Nessuna", "FR", "DE", "NL", "BE"], index=0)
+    if fallback_language != "Nessuna":
+        st.session_state["fallback_ext"] = f"1-{fallback_language.lower()}"
+    else:
+        st.session_state["fallback_ext"] = None
+
+    if st.button("Process CSV"):
+        start_time = time.time()  # Start timer
+        progress_bar = st.progress(0)
+        zip_data, missing_images_data, missing_images_df, bundle_list_data = process_file(uploaded_file, progress_bar)
+        progress_bar.empty()
+        elapsed_time = time.time() - start_time
+        minutes = int(elapsed_time // 60)
+        seconds = int(elapsed_time % 60)
+        st.write(f"Time to download and process images: {minutes} minutes and {seconds} seconds")
+        if zip_data:
+            st.session_state["zip_data"] = zip_data
+            st.session_state["bundle_list_data"] = bundle_list_data
+            st.session_state["missing_images_data"] = missing_images_data
+            st.session_state["missing_images_df"] = missing_images_df
 
 if "zip_data" in st.session_state:
     st.success("**Processing complete! Download your files below.**")
