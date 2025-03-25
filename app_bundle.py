@@ -10,6 +10,25 @@ from io import BytesIO
 from PIL import Image, ImageChops
 from cryptography.fernet import Fernet  # Import the module for encryption
 
+# ---------------------- Simple Authentication ----------------------
+if "authenticated" not in st.session_state:
+    st.session_state["authenticated"] = False
+
+if not st.session_state["authenticated"]:
+    st.title("Login")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+    if st.button("Login"):
+        # Replace these credentials with your desired username and password
+        if username == "admin" and password == "secret":
+            st.session_state["authenticated"] = True
+            st.experimental_rerun()
+        else:
+            st.error("Invalid username or password")
+    st.stop()
+
+# ---------------------- End of Authentication ----------------------
+
 # ----- Create a unique session ID and corresponding base folder for the session -----
 if "session_id" not in st.session_state:
     st.session_state["session_id"] = str(uuid.uuid4())
@@ -79,16 +98,15 @@ def process_double_bundle_image(image, layout="horizontal"):
     - Trimming white borders.
     - Creating a merged image that places two copies either side-by-side (horizontal)
       or one above the other (vertical). If layout is "automatic", the program 
-      chooses based on the image dimensions: vertical if the image is taller than wide, 
-      horizontal otherwise.
+      chooses vertical if the image is taller than wide, otherwise horizontal.
     - Resizing the merged image to fit within a 1000x1000 canvas.
     """
     image = trim(image)
     width, height = image.size
 
-    # Determine layout if set to automatic
+    # Determine layout if set to automatic: vertical if height > width, else horizontal.
     if layout.lower() == "automatic":
-        chosen_layout = "vertical" if height < width else "horizontal"
+        chosen_layout = "vertical" if height > width else "horizontal"
     else:
         chosen_layout = layout.lower()
 
@@ -127,16 +145,15 @@ def process_triple_bundle_image(image, layout="horizontal"):
     - Trimming white borders.
     - Creating a merged image that places three copies either side-by-side (horizontal)
       or stacked vertically (vertical). If layout is "automatic", the program 
-      chooses based on the image dimensions: vertical if the image is taller than wide, 
-      horizontal otherwise.
+      chooses vertical if the image is taller than wide, otherwise horizontal.
     - Resizing the merged image to fit within a 1000x1000 canvas.
     """
     image = trim(image)
     width, height = image.size
 
-    # Determine layout if set to automatic
+    # Determine layout if set to automatic: vertical if height > width, else horizontal.
     if layout.lower() == "automatic":
-        chosen_layout = "vertical" if height < width else "horizontal"
+        chosen_layout = "vertical" if height > width else "horizontal"
     else:
         chosen_layout = layout.lower()
 
