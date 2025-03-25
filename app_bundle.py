@@ -136,7 +136,7 @@ def process_triple_bundle_image(image, layout="horizontal"):
 
     # Determine layout if set to automatic
     if layout.lower() == "automatic":
-        chosen_layout = "vertical" if height > width else "horizontal"
+        chosen_layout = "vertical" if height < width else "horizontal"
     else:
         chosen_layout = layout.lower()
 
