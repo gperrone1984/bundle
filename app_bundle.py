@@ -78,18 +78,26 @@ def process_double_bundle_image(image, layout="horizontal"):
     Processes a double bundle image by:
     - Trimming white borders.
     - Creating a merged image that places two copies either side-by-side (horizontal)
-      or one above the other (vertical).
+      or one above the other (vertical). If layout is "automatic", the program 
+      chooses based on the image dimensions (width vs. height).
     - Resizing the merged image to fit within a 1000x1000 canvas.
     """
     image = trim(image)
     width, height = image.size
-    if layout.lower() == "horizontal":
+
+    # Determine layout if set to automatic
+    if layout.lower() == "automatic":
+        chosen_layout = "horizontal" if width >= height else "vertical"
+    else:
+        chosen_layout = layout.lower()
+
+    if chosen_layout == "horizontal":
         merged_width = width * 2
         merged_height = height
         merged_image = Image.new("RGB", (merged_width, merged_height), (255, 255, 255))
         merged_image.paste(image, (0, 0))
         merged_image.paste(image, (width, 0))
-    elif layout.lower() == "vertical":
+    elif chosen_layout == "vertical":
         merged_width = width
         merged_height = height * 2
         merged_image = Image.new("RGB", (merged_width, merged_height), (255, 255, 255))
@@ -117,19 +125,27 @@ def process_triple_bundle_image(image, layout="horizontal"):
     Processes a triple bundle image by:
     - Trimming white borders.
     - Creating a merged image that places three copies either side-by-side (horizontal)
-      or stacked vertically (vertical).
+      or stacked vertically (vertical). If layout is "automatic", the program 
+      chooses based on the image dimensions (width vs. height).
     - Resizing the merged image to fit within a 1000x1000 canvas.
     """
     image = trim(image)
     width, height = image.size
-    if layout.lower() == "horizontal":
+
+    # Determine layout if set to automatic
+    if layout.lower() == "automatic":
+        chosen_layout = "horizontal" if width >= height else "vertical"
+    else:
+        chosen_layout = layout.lower()
+
+    if chosen_layout == "horizontal":
         merged_width = width * 3
         merged_height = height
         merged_image = Image.new("RGB", (merged_width, merged_height), (255, 255, 255))
         merged_image.paste(image, (0, 0))
         merged_image.paste(image, (width, 0))
         merged_image.paste(image, (width * 2, 0))
-    elif layout.lower() == "vertical":
+    elif chosen_layout == "vertical":
         merged_width = width
         merged_height = height * 3
         merged_image = Image.new("RGB", (merged_width, merged_height), (255, 255, 255))
@@ -352,7 +368,7 @@ if uploaded_file:
     else:
         st.session_state["fallback_ext"] = None
 
-    layout_choice = st.selectbox("Choose bundle layout:", options=["Horizontal", "Vertical"], index=0)
+    layout_choice = st.selectbox("Choose bundle layout:", options=["Horizontal", "Vertical", "Automatic"], index=2)
 
     if st.button("Process CSV"):
         start_time = time.time()  # Start timer
