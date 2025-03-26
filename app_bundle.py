@@ -20,7 +20,7 @@ if not st.session_state["authenticated"]:
     password = st.text_input("Password", type="password")
     if st.button("Login"):
         # Replace these credentials with your desired username and password
-        if username == "admin" and password == "secret":
+        if username == "PDM_Team" and password == "bundlecreation":
             st.session_state["authenticated"] = True
         else:
             st.error("Invalid username or password")
