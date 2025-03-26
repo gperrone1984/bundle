@@ -25,7 +25,11 @@ if not st.session_state["authenticated"]:
         # Replace these credentials with the desired ones
         if username == "PDM_Team" and password == "bundlecreation":
             st.session_state["authenticated"] = True
-            st.experimental_rerun()  # Force re-run to move to the main page
+            # Use experimental_rerun if available, otherwise just stop the execution to refresh the app
+            if hasattr(st, "experimental_rerun"):
+                st.experimental_rerun()  # Force re-run to move to the main page
+            else:
+                st.stop()
         else:
             st.error("Invalid username or password")
     st.stop()  # Stop further execution if not authenticated
