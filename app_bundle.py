@@ -13,8 +13,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed  # Import for pa
 
 # ---------------------- Session State Management ----------------------
 # Initialize session variables only if they don't already exist
-st.session_state.setdefault("authenticated", False)
-st.session_state.setdefault("session_id", str(uuid.uuid4()))
+if "authenticated" not in st.session_state:
+    st.session_state["authenticated"] = False
+if "session_id" not in st.session_state:
+    st.session_state["session_id"] = str(uuid.uuid4())
 
 # ---------------------- Login ----------------------
 if not st.session_state["authenticated"]:
@@ -25,7 +27,6 @@ if not st.session_state["authenticated"]:
         # Replace these credentials with the desired ones
         if username == "PDM_Team" and password == "bundlecreation":
             st.session_state["authenticated"] = True
-            # Use experimental_rerun if available, otherwise just stop the execution to refresh the app
             if hasattr(st, "experimental_rerun"):
                 st.experimental_rerun()  # Force re-run to move to the main page
             else:
@@ -115,7 +116,6 @@ def process_double_bundle_image(image, layout="horizontal"):
     image = trim(image)
     width, height = image.size
 
-    # Determine layout if set to automatic: vertical if image is taller than wide
     if layout.lower() == "automatic":
         chosen_layout = "vertical" if height < width else "horizontal"
     else:
@@ -134,7 +134,6 @@ def process_double_bundle_image(image, layout="horizontal"):
         merged_image.paste(image, (0, 0))
         merged_image.paste(image, (0, height))
     else:
-        # Default to horizontal layout if not recognized
         merged_width = width * 2
         merged_height = height
         merged_image = Image.new("RGB", (merged_width, merged_height), (255, 255, 255))
@@ -160,7 +159,6 @@ def process_triple_bundle_image(image, layout="horizontal"):
     image = trim(image)
     width, height = image.size
 
-    # Determine layout if set to automatic: vertical if image is taller than wide
     if layout.lower() == "automatic":
         chosen_layout = "vertical" if height < width else "horizontal"
     else:
@@ -181,7 +179,6 @@ def process_triple_bundle_image(image, layout="horizontal"):
         merged_image.paste(image, (0, height))
         merged_image.paste(image, (0, height * 2))
     else:
-        # Default to horizontal layout if not recognized
         merged_width = width * 3
         merged_height = height
         merged_image = Image.new("RGB", (merged_width, merged_height), (255, 255, 255))
@@ -332,9 +329,13 @@ st.markdown("""
    - Without Media
 """)
 
-# Button to clear cache and reset data
+# Button to clear cache and reset data (clears only non-authentication session keys)
 if st.button("🧹 Clear Cache and Reset Data"):
-    st.session_state.clear()
+    # Keep only essential keys (authentication, session_id, and fallback_ext)
+    keys_to_keep = {"authenticated", "session_id", "fallback_ext"}
+    for key in list(st.session_state.keys()):
+        if key not in keys_to_keep:
+            del st.session_state[key]
     st.cache_data.clear()
     clear_old_data()
     components.html("<script>window.location.href=window.location.origin+window.location.pathname;</script>", height=0)
