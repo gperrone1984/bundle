@@ -8,7 +8,8 @@ import uuid
 import time
 from io import BytesIO
 from PIL import Image, ImageChops
-from cryptography.fernet import Fernet  # Import the module for encryption
+from cryptography.fernet import Fernet  # Import per l'encryption
+from concurrent.futures import ThreadPoolExecutor, as_completed  # Import per il download parallelo
 
 # ---------------------- Simple Authentication ----------------------
 if "authenticated" not in st.session_state:
@@ -52,7 +53,7 @@ else:
     
     # ---------------------- Helper Functions ----------------------
     def download_image(product_code, extension):
-        # If the product code starts with '1' or '0', prefix it with 'D'
+        # Se il product code inizia con '1' o '0', aggiungi il prefisso 'D'
         if product_code.startswith(('1', '0')):
             product_code = f"D{product_code}"
         url = f"https://cdn.shop-apotheke.com/images/{product_code}-p{extension}.jpg"
@@ -63,15 +64,25 @@ else:
     
     def get_image_with_fallback(product_code):
         """
-        Attempts to download an image using extension "1" first, then "10". 
-        If not found, and if the user has selected a fallback extension 
-        (e.g., FR, DE, NL, or BE), it will try that extension.
-        Returns a tuple (content, used_extension) or (None, None) if no image is found.
+        Tenta il download dell'immagine in parallelo per le estensioni "1" e "10".
+        Se nessuna delle due restituisce un risultato valido, prova con un eventuale fallback.
         """
-        for ext in ["1", "10"]:
-            content, _ = download_image(product_code, ext)
-            if content:
-                return content, ext
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            future_to_ext = {executor.submit(download_image, product_code, ext): ext for ext in ["1", "10"]}
+            results = {}
+            for future in as_completed(future_to_ext):
+                ext = future_to_ext[future]
+                try:
+                    content, url = future.result()
+                    results[ext] = (content, url)
+                except Exception:
+                    results[ext] = (None, None)
+            # Controlla in ordine di priorità: prima "1", poi "10"
+            for ext in ["1", "10"]:
+                if ext in results and results[ext][0]:
+                    return results[ext][0], ext
+
+        # Se non sono state trovate immagini, tenta con il fallback se selezionato
         fallback_ext = st.session_state.get("fallback_ext", None)
         if fallback_ext:
             content, _ = download_image(product_code, fallback_ext)
@@ -81,7 +92,7 @@ else:
     
     def trim(im):
         """
-        Trims the white borders from the image.
+        Rimuove i bordi bianchi dall'immagine.
         """
         bg = Image.new(im.mode, im.size, (255, 255, 255))
         diff = ImageChops.difference(im, bg)
@@ -92,17 +103,15 @@ else:
     
     def process_double_bundle_image(image, layout="horizontal"):
         """
-        Processes a double bundle image by:
-        - Trimming white borders.
-        - Creating a merged image that places two copies either side-by-side (horizontal)
-          or one above the other (vertical). If layout is "automatic", the program 
-          chooses vertical if the image is taller than wide, otherwise horizontal.
-        - Resizing the merged image to fit within a 1000x1000 canvas.
+        Processa l'immagine per bundle doppi:
+        - Rimuove i bordi bianchi.
+        - Crea un'immagine unita posizionando due copie affiancate o sovrapposte.
+        - Ridimensiona l'immagine risultante per adattarsi a un canvas 1000x1000.
         """
         image = trim(image)
         width, height = image.size
     
-        # Determine layout if set to automatic: vertical if height > width, else horizontal.
+        # Determina il layout se impostato su automatico: verticale se l'immagine è più alta che larga
         if layout.lower() == "automatic":
             chosen_layout = "vertical" if height < width else "horizontal"
         else:
@@ -121,7 +130,7 @@ else:
             merged_image.paste(image, (0, 0))
             merged_image.paste(image, (0, height))
         else:
-            # Default to horizontal layout if unrecognized
+            # Default a layout orizzontale se non riconosciuto
             merged_width = width * 2
             merged_height = height
             merged_image = Image.new("RGB", (merged_width, merged_height), (255, 255, 255))
@@ -139,17 +148,15 @@ else:
     
     def process_triple_bundle_image(image, layout="horizontal"):
         """
-        Processes a triple bundle image by:
-        - Trimming white borders.
-        - Creating a merged image that places three copies either side-by-side (horizontal)
-          or stacked vertically (vertical). If layout is "automatic", the program 
-          chooses vertical if the image is taller than wide, otherwise horizontal.
-        - Resizing the merged image to fit within a 1000x1000 canvas.
+        Processa l'immagine per bundle tripli:
+        - Rimuove i bordi bianchi.
+        - Crea un'immagine unita posizionando tre copie affiancate o sovrapposte.
+        - Ridimensiona l'immagine risultante per adattarsi a un canvas 1000x1000.
         """
         image = trim(image)
         width, height = image.size
     
-        # Determine layout if set to automatic: vertical if height > width, else horizontal.
+        # Determina il layout se impostato su automatico: verticale se l'immagine è più alta che larga
         if layout.lower() == "automatic":
             chosen_layout = "vertical" if height < width else "horizontal"
         else:
@@ -170,7 +177,7 @@ else:
             merged_image.paste(image, (0, height))
             merged_image.paste(image, (0, height * 2))
         else:
-            # Default to horizontal layout if unrecognized
+            # Default a layout orizzontale se non riconosciuto
             merged_width = width * 3
             merged_height = height
             merged_image = Image.new("RGB", (merged_width, merged_height), (255, 255, 255))
@@ -189,26 +196,19 @@ else:
     
     # ---------------------- Main Processing Function ----------------------
     def process_file(uploaded_file, progress_bar=None, layout="horizontal"):
-        # --------- Add encryption protection ---------
-        # Generate (or retrieve) an encryption key for the session
+        # --------- Aggiunta protezione con crittografia ---------
         if "encryption_key" not in st.session_state:
             st.session_state["encryption_key"] = Fernet.generate_key()
         key = st.session_state["encryption_key"]
         f = Fernet(key)
         
-        # Read the uploaded CSV file as bytes
         file_bytes = uploaded_file.read()
-        
-        # Encrypt the file content immediately after uploading
         encrypted_bytes = f.encrypt(file_bytes)
-        
-        # Decrypt the content for processing
         decrypted_bytes = f.decrypt(encrypted_bytes)
         
-        # Load the CSV into a pandas DataFrame from the decrypted content
         csv_file = BytesIO(decrypted_bytes)
         data = pd.read_csv(csv_file, delimiter=';', dtype=str)
-        # --------- End encryption protection ---------
+        # --------- Fine protezione ---------
     
         required_columns = {'sku', 'pzns_in_set'}
         missing_columns = required_columns - set(data.columns)
@@ -220,7 +220,6 @@ else:
             st.error("The CSV file is empty!")
             return None, None, None, None
     
-        # Keep only the required columns and drop rows with missing values
         data = data[list(required_columns)]
         data.dropna(inplace=True)
     
@@ -229,8 +228,8 @@ else:
     
         mixed_sets_needed = False
         mixed_folder = os.path.join(base_folder, "mixed_sets")
-        error_list = []      # List of tuples: (bundle_code, product_code)
-        bundle_list = []     # List with details: bundle code, product codes list, bundle type, cross-country flag
+        error_list = []      # List of tuple: (bundle_code, product_code)
+        bundle_list = []     # Lista con dettagli: bundle code, lista product codes, bundle type, cross-country flag
     
         total = len(data)
         for i, (_, row) in enumerate(data.iterrows()):
@@ -342,7 +341,7 @@ else:
     st.sidebar.markdown("""
     - **Automated Bundle Creation:** Automatically create product bundles by downloading and organizing images.
     - **CSV Upload:** Import a CSV report with product info.
-    - **Smart Image Retrieval:** Fetch high-quality images (first p1, then p10).
+    - **Smart Image Retrieval:** Fetch high-quality images (first p1, then p10) in parallelo.
     - **Language Selection:** Choose the language for cross-country photos.
     - **Dynamic Processing:** Combine images (double/triple) with proper resizing.
     - **Efficient Organization:** Save uniform bundles in dedicated folders and mixed bundles in separate directories. Language-specific images go to "cross-country".
