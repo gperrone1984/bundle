@@ -8,11 +8,11 @@ import uuid
 import time
 from io import BytesIO
 from PIL import Image, ImageChops
-from cryptography.fernet import Fernet  # Import per l'encryption
-from concurrent.futures import ThreadPoolExecutor, as_completed  # Import per il download parallelo
+from cryptography.fernet import Fernet  # Import for encryption
+from concurrent.futures import ThreadPoolExecutor, as_completed  # Import for parallel downloads
 
-# ---------------------- Gestione dello stato di sessione ----------------------
-# Inizializza le variabili di sessione solo se non esistono già
+# ---------------------- Session State Management ----------------------
+# Initialize session variables only if they don't already exist
 st.session_state.setdefault("authenticated", False)
 st.session_state.setdefault("session_id", str(uuid.uuid4()))
 
@@ -22,19 +22,19 @@ if not st.session_state["authenticated"]:
     username = st.text_input("Username")
     password = st.text_input("Password", type="password")
     if st.button("Login"):
-        # Sostituisci le credenziali con quelle desiderate
+        # Replace these credentials with the desired ones
         if username == "PDM_Team" and password == "bundlecreation":
             st.session_state["authenticated"] = True
-            st.experimental_rerun()  # Forza il re-run per passare alla pagina principale
+            st.experimental_rerun()  # Force re-run to move to the main page
         else:
             st.error("Invalid username or password")
-    st.stop()  # Interrompe l'esecuzione se non autenticato
+    st.stop()  # Stop further execution if not authenticated
 
 # ---------------------- Begin Main App Code ----------------------
 session_id = st.session_state["session_id"]
 base_folder = f"bundle_images_{session_id}"
 
-# ----- Pulizia automatica dei file della sessione precedente -----
+# ----- Automatically clean up previous session files on app start -----
 def clear_old_data():
     if os.path.exists(base_folder):
         shutil.rmtree(base_folder)
@@ -49,11 +49,11 @@ def clear_old_data():
     if os.path.exists("bundle_list.csv"):
         os.remove("bundle_list.csv")
 
-clear_old_data()  # Pulisce i file specifici della sessione all'avvio
+clear_old_data()  # Clean session-specific files on startup
 
-# ---------------------- Funzioni di supporto ----------------------
+# ---------------------- Helper Functions ----------------------
 def download_image(product_code, extension):
-    # Se il product code inizia con '1' o '0', aggiunge il prefisso 'D'
+    # If the product code starts with '1' or '0', add the prefix 'D'
     if product_code.startswith(('1', '0')):
         product_code = f"D{product_code}"
     url = f"https://cdn.shop-apotheke.com/images/{product_code}-p{extension}.jpg"
@@ -64,8 +64,8 @@ def download_image(product_code, extension):
 
 def get_image_with_fallback(product_code):
     """
-    Tenta il download dell'immagine in parallelo per le estensioni "1" e "10".
-    Se nessuna delle due restituisce un risultato valido, prova con un eventuale fallback.
+    Attempts to download the image in parallel for extensions "1" and "10".
+    If neither returns a valid result, it tries a fallback if available.
     """
     with ThreadPoolExecutor(max_workers=2) as executor:
         future_to_ext = {executor.submit(download_image, product_code, ext): ext for ext in ["1", "10"]}
@@ -77,12 +77,12 @@ def get_image_with_fallback(product_code):
                 results[ext] = (content, url)
             except Exception:
                 results[ext] = (None, None)
-        # Controlla in ordine di priorità: prima "1", poi "10"
+        # Check in priority order: first "1", then "10"
         for ext in ["1", "10"]:
             if ext in results and results[ext][0]:
                 return results[ext][0], ext
 
-    # Se non sono state trovate immagini, tenta con il fallback se selezionato
+    # If no image was found, try with the fallback if selected
     fallback_ext = st.session_state.get("fallback_ext", None)
     if fallback_ext:
         content, _ = download_image(product_code, fallback_ext)
@@ -92,7 +92,7 @@ def get_image_with_fallback(product_code):
 
 def trim(im):
     """
-    Rimuove i bordi bianchi dall'immagine.
+    Removes white borders from the image.
     """
     bg = Image.new(im.mode, im.size, (255, 255, 255))
     diff = ImageChops.difference(im, bg)
@@ -103,14 +103,15 @@ def trim(im):
 
 def process_double_bundle_image(image, layout="horizontal"):
     """
-    Processa l'immagine per bundle doppi:
-    - Rimuove i bordi bianchi.
-    - Crea un'immagine unita posizionando due copie affiancate o sovrapposte.
-    - Ridimensiona l'immagine risultante per adattarsi a un canvas 1000x1000.
+    Processes the image for double bundles:
+    - Removes white borders.
+    - Creates a merged image by placing two copies side-by-side or one above the other.
+    - Resizes the resulting image to fit a 1000x1000 canvas.
     """
     image = trim(image)
     width, height = image.size
 
+    # Determine layout if set to automatic: vertical if image is taller than wide
     if layout.lower() == "automatic":
         chosen_layout = "vertical" if height < width else "horizontal"
     else:
@@ -129,6 +130,7 @@ def process_double_bundle_image(image, layout="horizontal"):
         merged_image.paste(image, (0, 0))
         merged_image.paste(image, (0, height))
     else:
+        # Default to horizontal layout if not recognized
         merged_width = width * 2
         merged_height = height
         merged_image = Image.new("RGB", (merged_width, merged_height), (255, 255, 255))
@@ -146,14 +148,15 @@ def process_double_bundle_image(image, layout="horizontal"):
 
 def process_triple_bundle_image(image, layout="horizontal"):
     """
-    Processa l'immagine per bundle tripli:
-    - Rimuove i bordi bianchi.
-    - Crea un'immagine unita posizionando tre copie affiancate o sovrapposte.
-    - Ridimensiona l'immagine risultante per adattarsi a un canvas 1000x1000.
+    Processes the image for triple bundles:
+    - Removes white borders.
+    - Creates a merged image by placing three copies side-by-side or stacked vertically.
+    - Resizes the resulting image to fit a 1000x1000 canvas.
     """
     image = trim(image)
     width, height = image.size
 
+    # Determine layout if set to automatic: vertical if image is taller than wide
     if layout.lower() == "automatic":
         chosen_layout = "vertical" if height < width else "horizontal"
     else:
@@ -174,6 +177,7 @@ def process_triple_bundle_image(image, layout="horizontal"):
         merged_image.paste(image, (0, height))
         merged_image.paste(image, (0, height * 2))
     else:
+        # Default to horizontal layout if not recognized
         merged_width = width * 3
         merged_height = height
         merged_image = Image.new("RGB", (merged_width, merged_height), (255, 255, 255))
@@ -190,9 +194,9 @@ def process_triple_bundle_image(image, layout="horizontal"):
     final_image.paste(resized_image, (x_offset, y_offset))
     return final_image
 
-# ---------------------- Funzione principale di elaborazione ----------------------
+# ---------------------- Main Processing Function ----------------------
 def process_file(uploaded_file, progress_bar=None, layout="horizontal"):
-    # Protezione con crittografia
+    # Encryption protection
     if "encryption_key" not in st.session_state:
         st.session_state["encryption_key"] = Fernet.generate_key()
     key = st.session_state["encryption_key"]
@@ -223,8 +227,8 @@ def process_file(uploaded_file, progress_bar=None, layout="horizontal"):
     
     mixed_sets_needed = False
     mixed_folder = os.path.join(base_folder, "mixed_sets")
-    error_list = []      # Lista di tuple: (bundle_code, product_code)
-    bundle_list = []     # Lista con dettagli: bundle code, lista di product codes, bundle type, flag cross-country
+    error_list = []      # List of tuples: (bundle_code, product_code)
+    bundle_list = []     # List with details: bundle code, product codes list, bundle type, cross-country flag
     
     total = len(data)
     for i, (_, row) in enumerate(data.iterrows()):
@@ -309,9 +313,9 @@ def process_file(uploaded_file, progress_bar=None, layout="horizontal"):
     with open(zip_path, "rb") as zip_file:
         return zip_file.read(), missing_images_data, missing_images_df, bundle_list_data
 
-# ---------------------- Fine delle definizioni delle funzioni ----------------------
+# ---------------------- End of Function Definitions ----------------------
 
-# Interfaccia principale
+# Main UI
 st.title("PDM Bundle Image Creator")
 
 st.markdown("""
@@ -324,19 +328,19 @@ st.markdown("""
    - Without Media
 """)
 
-# Bottone per pulire cache e resettare i dati
+# Button to clear cache and reset data
 if st.button("🧹 Clear Cache and Reset Data"):
     st.session_state.clear()
     st.cache_data.clear()
     clear_old_data()
     components.html("<script>window.location.href=window.location.origin+window.location.pathname;</script>", height=0)
 
-# Sidebar: Cosa fa l'app
+# Sidebar: What This App Does
 st.sidebar.header("What This App Does")
 st.sidebar.markdown("""
 - **Automated Bundle Creation:** Automatically create product bundles by downloading and organizing images.
 - **CSV Upload:** Import a CSV report with product info.
-- **Smart Image Retrieval:** Fetch high-quality images (first p1, then p10) in parallelo.
+- **Smart Image Retrieval:** Fetch high-quality images (first p1, then p10) in parallel.
 - **Language Selection:** Choose the language for cross-country photos.
 - **Dynamic Processing:** Combine images (double/triple) with proper resizing.
 - **Efficient Organization:** Save uniform bundles in dedicated folders and mixed bundles in separate directories. Language-specific images go to "cross-country".
@@ -345,7 +349,7 @@ st.sidebar.markdown("""
 - **Interactive Preview:** Preview and download individual product images from the sidebar.
 """, unsafe_allow_html=True)
 
-# Sidebar: Anteprima dell'immagine del prodotto
+# Sidebar: Product Image Preview
 st.sidebar.header("Product Image Preview")
 product_code = st.sidebar.text_input("Enter Product Code:")
 selected_extension = st.sidebar.selectbox("Select Image Extension:", [str(i) for i in range(1, 19)], key="sidebar_ext")
@@ -370,7 +374,7 @@ if show_image and product_code:
     else:
         st.sidebar.error(f"No image found for {product_code} with -p{selected_extension}.jpg")
 
-# Contenuto principale: File Uploader, lingua di fallback e scelta del layout
+# Main Content: File Uploader, fallback language, and layout selection
 uploaded_file = st.file_uploader("Upload CSV File", type=["csv"], key="file_uploader")
 if uploaded_file:
     fallback_language = st.selectbox("Choose the language for cross-country photos:", options=["None", "FR", "DE", "NL", "BE"], index=0)
@@ -382,7 +386,7 @@ if uploaded_file:
     layout_choice = st.selectbox("Choose bundle layout:", options=["Horizontal", "Vertical", "Automatic"], index=2)
 
     if st.button("Process CSV"):
-        start_time = time.time()  # Avvio timer
+        start_time = time.time()  # Start timer
         progress_bar = st.progress(0)
         zip_data, missing_images_data, missing_images_df, bundle_list_data = process_file(uploaded_file, progress_bar, layout=layout_choice)
         progress_bar.empty()
