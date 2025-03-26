@@ -104,7 +104,7 @@ else:
     
         # Determine layout if set to automatic: vertical if height > width, else horizontal.
         if layout.lower() == "automatic":
-            chosen_layout = "vertical" if height > width else "horizontal"
+            chosen_layout = "vertical" if height < width else "horizontal"
         else:
             chosen_layout = layout.lower()
     
@@ -151,7 +151,7 @@ else:
     
         # Determine layout if set to automatic: vertical if height > width, else horizontal.
         if layout.lower() == "automatic":
-            chosen_layout = "vertical" if height > width else "horizontal"
+            chosen_layout = "vertical" if height < width else "horizontal"
         else:
             chosen_layout = layout.lower()
     
