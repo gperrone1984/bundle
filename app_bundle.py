@@ -303,13 +303,14 @@ async def process_file_async(uploaded_file, progress_bar=None, layout="horizonta
 st.title("PDM Bundle Image Creator")
 
 st.markdown("""
-**Instructions:**
+**How to use:**
 1. Create a Quick Report in Akeneo containing the list of products.
 2. Select the following options:
-   - File Type: CSV
-   - All Attributes or Grid Context (for Grid Context, select ID and PZN included in the set)
-   - With Codes
-   - Without Media
+   - File Type: CSV - All Attributes or Grid Context (for Grid Context, select ID and PZN included in the set) - With Codes - Without Media
+3. Select the Language for Specific Photos (if needed):
+4. Select the layout (Horizontal, Vertical, or Automatic).
+5. Click Process CSV to start the process.
+   
 """)
 
 if st.button("🧹 Clear Cache and Reset Data"):
