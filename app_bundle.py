@@ -11,6 +11,34 @@ from io import BytesIO
 from PIL import Image, ImageChops
 from cryptography.fernet import Fernet
 
+# ---------------------- Custom CSS ----------------------
+# Imposta la larghezza massima della sidebar e migliora lo stile dei pulsanti
+st.markdown(
+    """
+    <style>
+    /* Imposta la larghezza massima della sidebar (l'utente può comunque ridimensionarla) */
+    [data-testid="stSidebar"] > div:first-child {
+        width: 350px;
+    }
+    /* Stile personalizzato per i pulsanti */
+    .stButton > button {
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        text-align: center;
+        font-size: 16px;
+        border-radius: 8px;
+        cursor: pointer;
+    }
+    .stButton > button:hover {
+        background-color: #45a049;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 # ---------------------- Session State Management ----------------------
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
@@ -302,16 +330,18 @@ async def process_file_async(uploaded_file, progress_bar=None, layout="horizonta
 # Main UI
 st.title("PDM Bundle Image Creator")
 
-st.markdown("""
-**How to use:**
-1. Create a Quick Report in Akeneo containing the list of products.
-2. Select the following options:
-   - File Type: CSV - All Attributes or Grid Context (for Grid Context, select ID and PZN included in the set) - With Codes - Without Media
-3. Select the Language for Specific Photos (if needed):
-4. Select the layout (Horizontal, Vertical, or Automatic).
-5. Click Process CSV to start the process.
-   
-""")
+st.markdown(
+    """
+    **How to use:**
+    
+    1. Create a Quick Report in Akeneo containing the list of products.
+    2. Select the following options:
+       - File Type: CSV - All Attributes or Grid Context (for Grid Context, select ID and PZN included in the set) - With Codes - Without Media
+    3. **Choose the language for language specific photos:** (if needed)
+    4. **Choose bundle layout:** (Horizontal, Vertical, or Automatic)
+    5. Click **Process CSV** to start the process.
+    """
+)
 
 if st.button("🧹 Clear Cache and Reset Data"):
     keys_to_keep = {"authenticated", "session_id", "fallback_ext"}
@@ -323,18 +353,20 @@ if st.button("🧹 Clear Cache and Reset Data"):
     components.html("<script>window.location.href=window.location.origin+window.location.pathname;</script>", height=0)
 
 st.sidebar.header("What This App Does")
-st.sidebar.markdown("""
-- ❓ **Automated Bundle Creation:** Automatically create product bundles by downloading and organizing images.
-- 📂 **CSV Upload:** Use a Quick Report in Akeneo.
-- 🔎**Language Selection:** Choose the language for language specific photos.
-- ✏️**Dynamic Processing:** Combine images (double/triple) with proper resizing.
-- 🔎 **Layout:** Choose the layout for double/triple bundles.
-- 📁 **Efficient Organization:** Save double/triple bundles in dedicated folders and mixed bundles in separate directories. Language-specific images go to "cross-country".
-- ✏️ **Renames images** using the bundle code.
-- ❌**Error Logging:** Missing images are logged in a CSV.
-- 📥**Download:** Get a ZIP with all processed images and reports.
-- 🌐 **Interactive Preview:** Preview and download individual product images from the sidebar.
-""", unsafe_allow_html=True)
+st.sidebar.markdown(
+    """
+    - ❓ **Automated Bundle Creation:** Automatically create product bundles by downloading and organizing images.
+    - 📂 **CSV Upload:** Use a Quick Report in Akeneo.
+    - 🔎 **Language Selection:** Choose the language for language specific photos.
+    - ✏️ **Dynamic Processing:** Combine images (double/triple) with proper resizing.
+    - 🔎 **Layout:** Choose the layout for double/triple bundles.
+    - 📁 **Efficient Organization:** Save double/triple bundles in dedicated folders and mixed bundles in separate directories. Language-specific images go to "cross-country".
+    - ✏️ **Renames images** using the bundle code.
+    - ❌ **Error Logging:** Missing images are logged in a CSV.
+    - 📥 **Download:** Get a ZIP with all processed images and reports.
+    - 🌐 **Interactive Preview:** Preview and download individual product images from the sidebar.
+    """, unsafe_allow_html=True
+)
 
 st.sidebar.header("Product Image Preview")
 product_code = st.sidebar.text_input("Enter Product Code:")
@@ -366,15 +398,15 @@ if show_image and product_code:
     else:
         st.sidebar.error(f"No image found for {product_code} with -p{selected_extension}.jpg")
 
-uploaded_file = st.file_uploader("Upload CSV File", type=["csv"], key="file_uploader")
+uploaded_file = st.file_uploader("**Upload CSV File**", type=["csv"], key="file_uploader")
 if uploaded_file:
-    fallback_language = st.selectbox("Choose the language for language specific photos:", options=["None", "FR", "DE", "NL", "BE"], index=0)
+    fallback_language = st.selectbox("**Choose the language for language specific photos:**", options=["None", "FR", "DE", "NL", "BE"], index=0)
     if fallback_language != "None":
         st.session_state["fallback_ext"] = f"1-{fallback_language.lower()}"
     else:
         st.session_state["fallback_ext"] = None
 
-    layout_choice = st.selectbox("Choose bundle layout:", options=["Horizontal", "Vertical", "Automatic"], index=2)
+    layout_choice = st.selectbox("**Choose bundle layout:**", options=["Horizontal", "Vertical", "Automatic"], index=2)
 
     if st.button("Process CSV"):
         start_time = time.time()
