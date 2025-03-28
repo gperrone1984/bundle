@@ -18,7 +18,7 @@ st.markdown(
     <style>
     /* Imposta la larghezza massima della sidebar (l'utente può comunque ridimensionarla) */
     [data-testid="stSidebar"] > div:first-child {
-        width: 350px;
+        width: 450px;
     }
     /* Stile personalizzato per i pulsanti */
     .stButton > button {
