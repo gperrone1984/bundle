@@ -343,15 +343,16 @@ if st.button("🧹 Clear Cache and Reset Data"):
 # Sidebar: What This App Does
 st.sidebar.header("What This App Does")
 st.sidebar.markdown("""
-- **Automated Bundle Creation:** Automatically create product bundles by downloading and organizing images.
-- **CSV Upload:** Import a CSV report with product info.
-- **Smart Image Retrieval:** Fetch high-quality images (first p1, then p10) in parallel.
-- **Language Selection:** Choose the language for cross-country photos.
-- **Dynamic Processing:** Combine images (double/triple) with proper resizing.
-- **Efficient Organization:** Save uniform bundles in dedicated folders and mixed bundles in separate directories. Language-specific images go to "cross-country".
-- **Error Logging:** Missing images are logged in a CSV.
-- **Download:** Get a ZIP with all processed images and reports.
-- **Interactive Preview:** Preview and download individual product images from the sidebar.
+- ❓ **Automated Bundle Creation:** Automatically create product bundles by downloading and organizing images.
+- 📂 **CSV Upload:** Use a Quick Report in Akeneo.
+- 🔎**Language Selection:** Choose the language for language specific photos.
+- ✏️**Dynamic Processing:** Combine images (double/triple) with proper resizing.
+- 🔎 **Layout**: Choose the layout for double/triple bundle
+- 📁 **Efficient Organization:** Save double/triple bundles in dedicated folders and mixed bundles in separate directories. Language-specific images go to "cross-country".
+- ✏️ **Renames images** for bundles double, triple etc. using the bundle code.
+- ❌**Error Logging:** Missing images are logged in a CSV.
+- 📥**Download:** Get a ZIP with all processed images and reports.
+- 🌐 **Interactive Preview:** Preview and download individual product images from the sidebar.
 """, unsafe_allow_html=True)
 
 # Sidebar: Product Image Preview
@@ -382,7 +383,7 @@ if show_image and product_code:
 # Main Content: File Uploader, fallback language, and layout selection
 uploaded_file = st.file_uploader("Upload CSV File", type=["csv"], key="file_uploader")
 if uploaded_file:
-    fallback_language = st.selectbox("Choose the language for cross-country photos:", options=["None", "FR", "DE", "NL", "BE"], index=0)
+    fallback_language = st.selectbox("Choose the language for language specific photos:", options=["None", "FR", "DE", "NL", "BE"], index=0)
     if fallback_language != "None":
         st.session_state["fallback_ext"] = f"1-{fallback_language.lower()}"
     else:
