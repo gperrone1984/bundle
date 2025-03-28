@@ -22,7 +22,7 @@ st.markdown(
     }
     /* Stile personalizzato per i pulsanti */
     .stButton > button {
-        background-color: #706b9c;
+        background-color: #8984b3;
         color: white;
         border: none;
         padding: 8px 16px;
