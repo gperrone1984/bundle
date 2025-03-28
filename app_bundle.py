@@ -35,7 +35,7 @@ st.markdown(
     }
     /* Stile personalizzato per i bottoni di download */
     .stDownloadButton > button {
-        background-color: #c1a2db;
+        background-color: #acbf9b;
         color: white;
         border: none;
         padding: 8px 16px;
@@ -45,7 +45,7 @@ st.markdown(
         cursor: pointer;
     }
     .stDownloadButton > button:hover {
-        background-color: #a283c0;
+        background-color: #97a888;
     }
     /* Riduci il padding superiore della parte centrale per far partire il testo più in alto */
     .reportview-container .main .block-container{
