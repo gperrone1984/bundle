@@ -12,7 +12,6 @@ from PIL import Image, ImageChops
 from cryptography.fernet import Fernet
 
 # ---------------------- Custom CSS ----------------------
-# Imposta la larghezza massima della sidebar e migliora lo stile dei pulsanti
 st.markdown(
     """
     <style>
@@ -33,6 +32,10 @@ st.markdown(
     }
     .stButton > button:hover {
         background-color: #625e8a;
+    }
+    /* Riduci il padding superiore della parte centrale per far partire il testo più in alto */
+    .reportview-container .main .block-container{
+        padding-top: 1rem;
     }
     </style>
     """,
@@ -340,6 +343,8 @@ st.markdown(
     3. **Choose the language for language specific photos:** (if needed)
     4. **Choose bundle layout:** (Horizontal, Vertical, or Automatic)
     5. Click **Process CSV** to start the process.
+    6. Download the files.
+    7. Before starting a new process, click on **Reset Data**.
     """
 )
 
@@ -400,13 +405,17 @@ if show_image and product_code:
 
 uploaded_file = st.file_uploader("**Upload CSV File**", type=["csv"], key="file_uploader")
 if uploaded_file:
-    fallback_language = st.selectbox("**Choose the language for language specific photos:**", options=["None", "FR", "DE", "NL", "BE"], index=0)
+    # Posiziona le due select boxes in una riga affiancata
+    col1, col2 = st.columns(2)
+    with col1:
+        fallback_language = st.selectbox("**Choose the language for language specific photos:**", options=["None", "FR", "DE", "NL", "BE"], index=0)
+    with col2:
+        layout_choice = st.selectbox("**Choose bundle layout:**", options=["Horizontal", "Vertical", "Automatic"], index=2)
+
     if fallback_language != "None":
         st.session_state["fallback_ext"] = f"1-{fallback_language.lower()}"
     else:
         st.session_state["fallback_ext"] = None
-
-    layout_choice = st.selectbox("**Choose bundle layout:**", options=["Horizontal", "Vertical", "Automatic"], index=2)
 
     if st.button("Process CSV"):
         start_time = time.time()
