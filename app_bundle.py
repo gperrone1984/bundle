@@ -19,7 +19,7 @@ st.markdown(
     [data-testid="stSidebar"] > div:first-child {
         width: 550px;
     }
-    /* Stile personalizzato per i pulsanti */
+    /* Stile personalizzato per i pulsanti generici */
     .stButton > button {
         background-color: #8984b3;
         color: white;
@@ -32,6 +32,20 @@ st.markdown(
     }
     .stButton > button:hover {
         background-color: #625e8a;
+    }
+    /* Stile personalizzato per i bottoni di download */
+    .stDownloadButton > button {
+        background-color: #c1a2db;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        text-align: center;
+        font-size: 16px;
+        border-radius: 8px;
+        cursor: pointer;
+    }
+    .stDownloadButton > button:hover {
+        background-color: #a283c0;
     }
     /* Riduci il padding superiore della parte centrale per far partire il testo più in alto */
     .reportview-container .main .block-container{
