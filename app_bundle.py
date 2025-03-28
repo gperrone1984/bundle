@@ -32,7 +32,7 @@ st.markdown(
         cursor: pointer;
     }
     .stButton > button:hover {
-        background-color: #45a049;
+        background-color: #625e8a;
     }
     </style>
     """,
