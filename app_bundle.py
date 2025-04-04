@@ -290,17 +290,16 @@ async def process_file_async(uploaded_file, progress_bar=None, layout="horizonta
                 product_code = product_codes[0]
                 # Creazione della cartella di destinazione
                 folder_name = os.path.join(base_folder, f"bundle_{num_products}")
-                # Se l'immagine scaricata è language-specific viene considerata cross-country
                 if st.session_state.get("fallback_ext") in ["NL FR", "1-fr", "1-de", "1-nl"]:
                     bundle_cross_country = True
                     folder_name = os.path.join(base_folder, "cross-country")
                 os.makedirs(folder_name, exist_ok=True)
     
-                # Gestione del caso NL FR
                 if st.session_state.get("fallback_ext") == "NL FR":
-                    images_dict, used_ext = await async_get_image_with_fallback(product_code, session)
-                    if images_dict:
-                        for lang, image_data in images_dict.items():
+                    result, used_ext = await async_get_image_with_fallback(product_code, session)
+                    if used_ext == "NL FR" and isinstance(result, dict):
+                        # Elaborazione delle immagini NL FR
+                        for lang, image_data in result.items():
                             suffix = "-p1-fr" if lang == "1-fr" else "-p1-nl"
                             try:
                                 img = await asyncio.to_thread(Image.open, BytesIO(image_data))
@@ -315,27 +314,25 @@ async def process_file_async(uploaded_file, progress_bar=None, layout="horizonta
                             except Exception as e:
                                 st.error(f"Error processing image for bundle {bundle_code}: {e}")
                                 error_list.append((bundle_code, product_code))
-                    else:
-                        # Se non trova immagini NL FR, prova lo standard e rinomina come -h1
-                        image_data, used_ext = await async_get_image_with_fallback(product_code, session)
-                        if image_data:
-                            try:
-                                img = await asyncio.to_thread(Image.open, BytesIO(image_data))
-                                if num_products == 2:
-                                    final_img = await asyncio.to_thread(process_double_bundle_image, img, layout)
-                                elif num_products == 3:
-                                    final_img = await asyncio.to_thread(process_triple_bundle_image, img, layout)
-                                else:
-                                    final_img = img
-                                save_path = os.path.join(folder_name, f"{bundle_code}-h1.jpg")
-                                await asyncio.to_thread(final_img.save, save_path, "JPEG", quality=100)
-                            except Exception as e:
-                                st.error(f"Error processing image for bundle {bundle_code}: {e}")
-                                error_list.append((bundle_code, product_code))
-                        else:
+                    elif result:
+                        # Caso fallback standard: una sola immagine, rinomina come -h1
+                        try:
+                            img = await asyncio.to_thread(Image.open, BytesIO(result))
+                            if num_products == 2:
+                                final_img = await asyncio.to_thread(process_double_bundle_image, img, layout)
+                            elif num_products == 3:
+                                final_img = await asyncio.to_thread(process_triple_bundle_image, img, layout)
+                            else:
+                                final_img = img
+                            save_path = os.path.join(folder_name, f"{bundle_code}-h1.jpg")
+                            await asyncio.to_thread(final_img.save, save_path, "JPEG", quality=100)
+                        except Exception as e:
+                            st.error(f"Error processing image for bundle {bundle_code}: {e}")
                             error_list.append((bundle_code, product_code))
+                    else:
+                        error_list.append((bundle_code, product_code))
                 else:
-                    # Branch standard (per fallback_ext diverso da NL FR)
+                    # Branch standard (fallback_ext diverso da NL FR)
                     image_data, used_ext = await async_get_image_with_fallback(product_code, session)
                     if used_ext in ["1-fr", "1-de", "1-nl"]:
                         bundle_cross_country = True
@@ -350,7 +347,7 @@ async def process_file_async(uploaded_file, progress_bar=None, layout="horizonta
                                 final_img = await asyncio.to_thread(process_triple_bundle_image, img, layout)
                             else:
                                 final_img = img
-                            suffix = "-h1"  # in questo branch si usa lo standard
+                            suffix = "-h1"
                             save_path = os.path.join(folder_name, f"{bundle_code}{suffix}.jpg")
                             await asyncio.to_thread(final_img.save, save_path, "JPEG", quality=100)
                         except Exception as e:
@@ -364,26 +361,23 @@ async def process_file_async(uploaded_file, progress_bar=None, layout="horizonta
                 bundle_folder = os.path.join(mixed_folder, bundle_code)
                 os.makedirs(bundle_folder, exist_ok=True)
                 for product_code in product_codes:
-                    # Gestione NL FR per bundle misti
                     if st.session_state.get("fallback_ext") == "NL FR":
-                        images_dict = await async_get_nl_fr_images(product_code, session)
-                        if images_dict:
-                            for lang, image_data in images_dict.items():
+                        result, used_ext = await async_get_image_with_fallback(product_code, session)
+                        if used_ext == "NL FR" and isinstance(result, dict):
+                            for lang, image_data in result.items():
                                 suffix = "-p1-fr" if lang == "1-fr" else "-p1-nl"
                                 prod_folder = os.path.join(bundle_folder, "cross-country") if lang in ["1-fr", "1-de", "1-nl"] else bundle_folder
                                 os.makedirs(prod_folder, exist_ok=True)
                                 file_path = os.path.join(prod_folder, f"{product_code}{suffix}.jpg")
                                 await asyncio.to_thread(save_binary_file, file_path, image_data)
+                        elif result:
+                            suffix = "-h1"
+                            prod_folder = os.path.join(bundle_folder, "cross-country") if used_ext in ["1-fr", "1-de", "1-nl"] else bundle_folder
+                            os.makedirs(prod_folder, exist_ok=True)
+                            file_path = os.path.join(prod_folder, f"{product_code}{suffix}.jpg")
+                            await asyncio.to_thread(save_binary_file, file_path, result)
                         else:
-                            image_data, used_ext = await async_get_image_with_fallback(product_code, session)
-                            if image_data:
-                                suffix = "-h1"
-                                prod_folder = os.path.join(bundle_folder, "cross-country") if used_ext in ["1-fr", "1-de", "1-nl"] else bundle_folder
-                                os.makedirs(prod_folder, exist_ok=True)
-                                file_path = os.path.join(prod_folder, f"{product_code}{suffix}.jpg")
-                                await asyncio.to_thread(save_binary_file, file_path, image_data)
-                            else:
-                                error_list.append((bundle_code, product_code))
+                            error_list.append((bundle_code, product_code))
                     else:
                         image_data, used_ext = await async_get_image_with_fallback(product_code, session)
                         if used_ext in ["1-fr", "1-de", "1-nl"]:
