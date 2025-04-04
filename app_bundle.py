@@ -79,25 +79,26 @@ if not st.session_state["authenticated"]:
     st.stop()
 
 # ---------------------- Begin Main App Code ----------------------
-# Tutti i file verranno salvati in una cartella generale chiamata "Bundle&Set"
-base_folder = "Bundle&Set"
+# Creazione di una cartella unica per ogni sessione
+session_id = st.session_state["session_id"]
+# La cartella di output per la sessione corrente (isolata)
+base_folder = f"Bundle&Set_{session_id}"
 
-# ----- Pulizia automatica dei file di sessione precedenti -----
+# ----- Pulizia automatica dei file della sessione corrente -----
 def clear_old_data():
     if os.path.exists(base_folder):
         shutil.rmtree(base_folder)
-    temp_zip = "Bundle&Set_temp.zip"
-    if os.path.exists(temp_zip):
-        os.remove(temp_zip)
-    zip_path = "Bundle&Set.zip"
+    # Elimina eventuali ZIP della sessione corrente
+    zip_path = f"Bundle&Set_{session_id}.zip"
     if os.path.exists(zip_path):
         os.remove(zip_path)
+    # Elimina il file CSV degli errori se esistente
     if os.path.exists("missing_images.csv"):
         os.remove("missing_images.csv")
     if os.path.exists("bundle_list.csv"):
         os.remove("bundle_list.csv")
 
-clear_old_data()  # Pulizia dei file al primo avvio
+clear_old_data()  # Pulizia dei file della sessione al primo avvio
 
 # ---------------------- Helper Functions ----------------------
 async def async_download_image(product_code, extension, session):
@@ -128,10 +129,7 @@ def process_double_bundle_image(image, layout="horizontal"):
     """Processa bundle a due immagini: rimuove i bordi bianchi, unisce due copie e ridimensiona su una tela 1000x1000."""
     image = trim(image)
     width, height = image.size
-    if layout.lower() == "automatic":
-        chosen_layout = "vertical" if height < width else "horizontal"
-    else:
-        chosen_layout = layout.lower()
+    chosen_layout = "vertical" if (layout.lower() == "automatic" and height < width) else layout.lower()
     if chosen_layout == "horizontal":
         merged_width = width * 2
         merged_height = height
@@ -164,10 +162,7 @@ def process_triple_bundle_image(image, layout="horizontal"):
     """Processa bundle a tre immagini: rimuove i bordi bianchi, unisce tre copie e ridimensiona su una tela 1000x1000."""
     image = trim(image)
     width, height = image.size
-    if layout.lower() == "automatic":
-        chosen_layout = "vertical" if height < width else "horizontal"
-    else:
-        chosen_layout = layout.lower()
+    chosen_layout = "vertical" if (layout.lower() == "automatic" and height < width) else layout.lower()
     if chosen_layout == "horizontal":
         merged_width = width * 3
         merged_height = height
@@ -204,7 +199,7 @@ def save_binary_file(path, data):
     with open(path, 'wb') as f:
         f.write(data)
 
-# Funzione dedicata per la modalità NL FR: scarica in parallelo le immagini con estensione 1-fr e 1-nl.
+# Funzione per la modalità NL FR: scarica in parallelo le immagini con estensione 1-fr e 1-nl.
 async def async_get_nl_fr_images(product_code, session):
     tasks = [
         async_download_image(product_code, "1-fr", session),
@@ -218,7 +213,7 @@ async def async_get_nl_fr_images(product_code, session):
         images["1-nl"] = results[1][0]
     return images
 
-# Funzione generica per il download, che gestisce il caso speciale "NL FR"
+# Funzione generica per il download, gestisce anche il caso speciale "NL FR"
 async def async_get_image_with_fallback(product_code, session):
     fallback_ext = st.session_state.get("fallback_ext", None)
     if fallback_ext == "NL FR":
@@ -288,7 +283,7 @@ async def process_file_async(uploaded_file, progress_bar=None, layout="horizonta
     
             if is_uniform:
                 product_code = product_codes[0]
-                # Creazione della cartella di destinazione
+                # Imposta la cartella di destinazione per il bundle
                 folder_name = os.path.join(base_folder, f"bundle_{num_products}")
                 if st.session_state.get("fallback_ext") in ["NL FR", "1-fr", "1-de", "1-nl"]:
                     bundle_cross_country = True
@@ -315,7 +310,7 @@ async def process_file_async(uploaded_file, progress_bar=None, layout="horizonta
                                 st.error(f"Error processing image for bundle {bundle_code}: {e}")
                                 error_list.append((bundle_code, product_code))
                     elif result:
-                        # Caso fallback standard: una sola immagine, rinomina come -h1
+                        # Fallback standard: una sola immagine, rinomina come -h1
                         try:
                             img = await asyncio.to_thread(Image.open, BytesIO(result))
                             if num_products == 2:
@@ -332,7 +327,7 @@ async def process_file_async(uploaded_file, progress_bar=None, layout="horizonta
                     else:
                         error_list.append((bundle_code, product_code))
                 else:
-                    # Branch standard (fallback_ext diverso da NL FR)
+                    # Branch standard per fallback_ext diverso da NL FR
                     image_data, used_ext = await async_get_image_with_fallback(product_code, session)
                     if used_ext in ["1-fr", "1-de", "1-nl"]:
                         bundle_cross_country = True
@@ -417,9 +412,21 @@ async def process_file_async(uploaded_file, progress_bar=None, layout="horizonta
     with open(bundle_list_csv, "rb") as f_csv:
         bundle_list_data = f_csv.read()
     
-    zip_path = "Bundle&Set.zip"
-    shutil.make_archive("Bundle&Set_temp", 'zip', base_folder)
+    # Creazione del file ZIP:
+    # Creiamo una struttura temporanea: una cartella "Bundle&Set" che contiene i file della sessione
+    temp_parent = "Bundle&Set_temp"
+    if os.path.exists(temp_parent):
+        shutil.rmtree(temp_parent)
+    os.makedirs(temp_parent, exist_ok=True)
+    # All'interno della cartella temporanea creiamo una cartella "Bundle&Set" e copiamo i file della sessione
+    zip_folder = os.path.join(temp_parent, "Bundle&Set")
+    shutil.copytree(base_folder, zip_folder)
+    # Creiamo l'archivio ZIP (il nome include lo session ID per evitare conflitti)
+    zip_path = f"Bundle&Set_{session_id}.zip"
+    shutil.make_archive("Bundle&Set_temp", 'zip', temp_parent)
     os.rename("Bundle&Set_temp.zip", zip_path)
+    # Puliamo la cartella temporanea
+    shutil.rmtree(temp_parent)
     with open(zip_path, "rb") as zip_file:
         zip_bytes = zip_file.read()
     
@@ -462,8 +469,8 @@ st.sidebar.markdown(
     - 🔎 **Language Selection:** Choose the language for language specific photos.
     - ✏️ **Dynamic Processing:** Combine images (double/triple) with proper resizing.
     - 🔎 **Layout:** Choose the layout for double/triple bundles.
-    - 📁 **Efficient Organization:** Save images in a general folder called "Bundle&Set".
-    - ✏️ **Renames images** using the bundle code and suffissi specifici:
+    - 📁 **Efficient Organization:** Each session crea una cartella unica per evitare conflitti, poi nel file ZIP viene inclusa una cartella generale chiamata "Bundle&Set".
+    - ✏️ **Renames images** using the bundle code and specific suffixes:
          - NL FR: "-p1-fr" / "-p1-nl"
          - Standard fallback: "-h1"
     - ❌ **Error Logging:** Missing images are logged in a CSV.
@@ -504,7 +511,6 @@ if show_image and product_code:
 
 uploaded_file = st.file_uploader("**Upload CSV File**", type=["csv"], key="file_uploader")
 if uploaded_file:
-    # Posiziona le due select boxes in una riga affiancata
     col1, col2 = st.columns(2)
     with col1:
         # Aggiornate le opzioni: rimuove "BE" e aggiunge "NL FR"
@@ -539,7 +545,7 @@ if "zip_data" in st.session_state:
     st.download_button(
         label="Download Bundle Image",
         data=st.session_state["zip_data"],
-        file_name="Bundle&Set.zip",
+        file_name=f"Bundle&Set_{session_id}.zip",
         mime="application/zip"
     )
     st.download_button(
